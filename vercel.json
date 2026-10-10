@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://hydra-0gjc.onrender.com/api/:path*"
+    }
+  ]
+}
