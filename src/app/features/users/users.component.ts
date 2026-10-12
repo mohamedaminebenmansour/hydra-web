@@ -18,6 +18,7 @@ interface UserRow {
   isOwner: boolean;
   isActive: boolean;
   roles: RoleRef[];
+  lastLoginAt: string | null;
 }
 
 /** Shape returned by GET /api/users (parallel roleCodes/roleLabels arrays). */
@@ -29,6 +30,7 @@ interface UserDto {
   isActive: boolean;
   roleCodes: string[];
   roleLabels: string[];
+  lastLoginAt?: string | null;
 }
 
 interface RoleRow { id: string; code: string; label: string; isSystem: boolean; }
@@ -86,6 +88,9 @@ interface RoleRow { id: string; code: string; label: string; isSystem: boolean; 
             @if (u.isOwner) { <span class="tag tag-owner">Gérant</span> }
           </div>
           <div class="sub">{{ u.email }}</div>
+          @if (u.lastLoginAt) {
+            <div class="last-login">Dernière connexion : {{ formatLastLogin(u.lastLoginAt) }}</div>
+          }
           <div class="ptags">
             @for (r of u.roles; track r.code) {
               <span class="ptag">{{ r.label }}</span>
@@ -190,6 +195,7 @@ interface RoleRow { id: string; code: string; label: string; isSystem: boolean; 
       border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px 18px; margin-bottom: 10px; gap: 12px; }
     .title { font-size: 18px; font-weight: 600; display: flex; gap: 10px; align-items: center; }
     .sub { color: #64748b; margin-top: 3px; }
+    .last-login { color: #94a3b8; font-size: 12px; margin-top: 3px; }
     .ptags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
     .ptag { background: #f1f5f9; color: #334155; font-size: 12px; font-weight: 600;
       padding: 3px 10px; border-radius: 999px; }
@@ -245,11 +251,18 @@ export class UsersComponent {
         fullName: d.fullName,
         isOwner: d.isOwner,
         isActive: d.isActive,
-        roles: d.roleCodes.map((code, i) => ({ code, label: d.roleLabels[i] ?? code }))
+        roles: d.roleCodes.map((code, i) => ({ code, label: d.roleLabels[i] ?? code })),
+        lastLoginAt: d.lastLoginAt ?? null
       }));
       this.loaded = true;
     });
     this.http.get<RoleRow[]>('/api/roles').subscribe(r => this.roles = r);
+  }
+
+  formatLastLogin(iso: string): string {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) { return iso; }
+    return d.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   }
 
   toggleRole(code: string, ev: Event): void {

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 
 export interface Me {
+  id?: string;
   email: string;
   fullName: string;
   isOwner: boolean;

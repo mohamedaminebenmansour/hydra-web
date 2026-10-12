@@ -7,9 +7,11 @@ import { EmptyStateComponent } from '../../shared/empty-state.component';
 interface Tile { label: string; icon: string; path: string; perm: string; color: string; desc: string; }
 
 const TILES: Tile[] = [
-  { label: 'Tickets',       icon: 'pi pi-ticket',  path: '/tickets', perm: PERM.TICKET_READ, color: '#d97706', desc: 'Problèmes à suivre' },
+  { label: 'Tickets',       icon: 'pi pi-ticket',  path: '/tickets', perm: PERM.TICKET_READ, color: '#d97706', desc: 'Travaux assignés' },
+  { label: 'Chantiers',     icon: 'pi pi-briefcase', path: '/projects', perm: PERM.PROJECT_READ, color: '#0d9488', desc: 'Projets et travaux' },
   { label: 'Utilisateurs',  icon: 'pi pi-users',   path: '/users',   perm: PERM.USER_CREATE, color: '#0ea5e9', desc: 'Gérer les accès' },
-  { label: 'Rôles',         icon: 'pi pi-id-card', path: '/roles',   perm: PERM.ROLE_MANAGE, color: '#7c3aed', desc: 'Configurer les droits' }
+  { label: 'Rôles',         icon: 'pi pi-id-card', path: '/roles',   perm: PERM.ROLE_MANAGE, color: '#7c3aed', desc: 'Configurer les droits' },
+  { label: 'Journal',       icon: 'pi pi-history', path: '/audit',   perm: PERM.AUDIT_VIEW,  color: '#0d9488', desc: "Voir l'activité" }
 ];
 
 @Component({
