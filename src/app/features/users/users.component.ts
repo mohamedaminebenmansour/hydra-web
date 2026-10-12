@@ -342,7 +342,7 @@ export class UsersComponent {
   }
 
   private handleError(err: any, setConflict: (m: string) => void, onSuccessOverride: () => void): void {
-    if (err.status === 409 && err.error?.code === 'TOXIC_PAIR_CONFLICT') {
+    if (err.status === 409 && (err.error?.code === 'TOXIC_PAIR_CONFLICT' || err.error?.code === 'TOXIC_PAIR')) {
       setConflict(err.error.message);
     } else {
       this.msgs.add({ severity: 'error', summary: 'Erreur',

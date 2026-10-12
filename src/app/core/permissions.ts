@@ -27,3 +27,14 @@ export const PERM_LABELS: Record<string, string> = {
   TICKET_READ: 'Voir les tickets',
   TICKET_WRITE: 'Créer et fermer les tickets'
 };
+
+export const PERM_GROUPS: { key: string; icon: string; title: string; ids: string[] }[] = [
+  { key: 'users',   icon: 'pi pi-users',  title: 'Utilisateurs',
+    ids: ['USER_CREATE','USER_UPDATE','USER_DEACTIVATE','ROLE_ASSIGN','ROLE_MANAGE'] },
+  { key: 'docs',    icon: 'pi pi-file',   title: 'Documents',
+    ids: ['DOCUMENT_READ','DOCUMENT_UPLOAD','DOCUMENT_DOWNLOAD'] },
+  { key: 'tickets', icon: 'pi pi-ticket', title: 'Tickets',
+    ids: ['TICKET_READ','TICKET_WRITE'] },
+  { key: 'other',   icon: 'pi pi-cog',    title: 'Autres',
+    ids: ['PROJECT_MANAGE','AUDIT_VIEW'] },
+];
