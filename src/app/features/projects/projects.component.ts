@@ -1,23 +1,27 @@
-import { Component, OnInit, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
+import { MultiSelectModule } from 'primeng/multiselect';
+import { InputNumberModule } from 'primeng/inputnumber';
+import { TextareaModule } from 'primeng/textarea';
+import { DatePickerModule } from 'primeng/datepicker';
 import { DialogModule } from 'primeng/dialog';
 import { TagModule } from 'primeng/tag';
 import { ChipModule } from 'primeng/chip';
 import { MessageService } from 'primeng/api';
-import { AuthService } from '../../core/auth.service';
-import { PERM } from '../../core/permissions';
-import { EmptyStateComponent } from '../../shared/empty-state.component';
-
-interface ProjectRow {
-  id: string;
-  name: string;
-  code?: string | null;
-  status: string;
-}
+import { AuthService } from '@app/core/auth.service';
+import { PERM } from '@app/core/permissions';
+import { ProjectService } from '@app/core/services/project.service';
+import { UserService } from '@app/core/services/user.service';
+import {
+  Project, ProjectCreate, ProjectUpdate, ProjectType,
+  PROJECT_TYPE_OPTS, PROJECT_TYPE_LABELS
+} from '@app/core/models/project.model';
+import { SelectOption } from '@app/core/models/select-option';
+import { EmptyStateComponent } from '@app/shared/empty-state.component';
 
 const STATUS_OPTS = [
   { label: 'Actif', value: 'ACTIF' },
@@ -32,136 +36,116 @@ const STATUS_OPTS = [
     ButtonModule,
     InputTextModule,
     SelectModule,
+    MultiSelectModule,
+    InputNumberModule,
+    TextareaModule,
+    DatePickerModule,
     DialogModule,
     TagModule,
     ChipModule,
     EmptyStateComponent
   ],
-  template: `
-    <div class="head">
-      <h2><i class="pi pi-briefcase"></i> Chantiers</h2>
-      @if (canWrite()) {
-        <p-button icon="pi pi-plus" label="Nouveau" (onClick)="openCreate()" />
-      }
-    </div>
-
-    <div class="grid">
-      @for (p of projects; track p.id) {
-        <div class="pcard">
-          <div class="prow">
-            <span class="pname">{{ p.name }}</span>
-            <div class="pbadges">
-              @if (isActive(p)) {
-                <p-tag value="Actif" severity="success" icon="pi pi-check" />
-              } @else {
-                <p-tag value="Clôturé" severity="secondary" icon="pi pi-lock" />
-              }
-              @if (canWrite()) {
-                <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
-                          (onClick)="openEdit(p)" [attr.aria-label]="'Modifier ' + p.name" />
-              }
-            </div>
-          </div>
-          @if (p.code) {
-            <div class="pcode"><p-chip [label]="p.code" /></div>
-          }
-        </div>
-      } @empty {
-        <app-empty-state icon="pi pi-briefcase" message="Aucun chantier pour le moment."></app-empty-state>
-      }
-    </div>
-
-    <p-dialog [(visible)]="showDialog" [modal]="true" [style]="{ width: '480px' }"
-              [styleClass]="'full-dialog'"
-              [header]="mode === 'edit' ? 'Modifier le chantier' : 'Nouveau chantier'">
-      <div class="dlg-form">
-        <div class="field">
-          <label>Nom du chantier</label>
-          <input pInputText class="inp" placeholder="Nom du chantier"
-                 [(ngModel)]="formName" (keyup.enter)="submit()" />
-        </div>
-        <div class="field">
-          <label>Code (optionnel)</label>
-          <input pInputText class="inp" placeholder="Ex. : CHT-01" [(ngModel)]="formCode" />
-        </div>
-        @if (mode === 'edit') {
-          <div class="field">
-            <label>Statut</label>
-            <p-select [options]="statusOpts" [(ngModel)]="formStatus" optionLabel="label"
-                      optionValue="value" styleClass="w100" />
-          </div>
-        }
-      </div>
-      <ng-template pTemplate="footer">
-        <p-button label="Annuler" [text]="true" (onClick)="showDialog = false" />
-        <p-button [label]="mode === 'edit' ? 'Enregistrer' : 'Créer'" icon="pi pi-check"
-                  (onClick)="submit()" [disabled]="!formName.trim()" />
-      </ng-template>
-    </p-dialog>
-  `,
-  styles: [`
-    .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-    .head h2 { margin: 0; display: flex; gap: 10px; align-items: center; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-    .pcard { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
-      display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
-    .prow { display: flex; justify-content: space-between; width: 100%; align-items: center; gap: 8px; }
-    .pname { font-size: 18px; font-weight: 700; }
-    .pbadges { display: flex; align-items: center; gap: 6px; }
-    .pcode { font-size: 13px; }
-    .dlg-form { display: flex; flex-direction: column; gap: 14px; }
-    .field { display: flex; flex-direction: column; gap: 6px; }
-    .field label { font-size: 13px; font-weight: 700; color: #475569;
-      text-transform: uppercase; letter-spacing: 0.03em; }
-    .inp { font-size: 17px; padding: 10px 12px; width: 100%; box-sizing: border-box; }
-    .w100 { width: 100%; }
-    :host ::ng-deep .full-dialog { width: 92vw; max-width: 480px; }
-    @media (max-width: 520px) { :host ::ng-deep .full-dialog { width: 96vw; } }
-  `]
+  templateUrl: './projects.component.html',
+  styleUrl: './projects.component.scss'
 })
 export class ProjectsComponent implements OnInit {
-  private http = inject(HttpClient);
+  private projectService = inject(ProjectService);
+  private userService = inject(UserService);
+  private router = inject(Router);
   private auth = inject(AuthService);
   private msgs = inject(MessageService);
 
-  projects: ProjectRow[] = [];
+  projects: Project[] = [];
+  userOptions = signal<SelectOption[]>([]);
   readonly statusOpts = STATUS_OPTS;
+  readonly projectTypeOpts = PROJECT_TYPE_OPTS;
 
   mode: 'create' | 'edit' = 'create';
   showDialog = false;
   formName = '';
   formCode = '';
+  formClientName = '';
+  formLocation = '';
+  formGovernorate = '';
+  formProjectType: ProjectType | null = null;
+  formStartDate: Date | null = null;
+  formEndDate: Date | null = null;
+  formContractValue: number | null = null;
+  formMembers: string[] = [];
+  formDescription = '';
   formStatus = 'ACTIF';
-  private editTarget: ProjectRow | null = null;
+  private editTarget: Project | null = null;
 
   canWrite = computed(() => this.auth.can(PERM.PROJECT_WRITE));
+  memberOpts = computed(() => this.userOptions());
 
-  ngOnInit(): void { this.load(); }
+  ngOnInit(): void { this.load(); this.loadMemberOptions(); }
 
-  isActive(p: ProjectRow): boolean { return (p.status ?? 'ACTIF') === 'ACTIF'; }
+  isActive(p: Project): boolean { return (p.status ?? 'ACTIF') === 'ACTIF'; }
+
+  typeLabel(t: string | null | undefined): string {
+    return t ? (PROJECT_TYPE_LABELS[t] ?? t) : '';
+  }
+
+  fmtDate(iso: string | null | undefined): string {
+    if (!iso) { return '—'; }
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) { return iso; }
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  open(p: Project): void { this.router.navigate(['/projects', p.id]); }
 
   load(): void {
-    this.http.get<ProjectRow[]>('/api/projects').subscribe({
+    this.projectService.list().subscribe({
       next: list => this.projects = list ?? [],
       error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Chargement impossible' })
     });
   }
 
+  private loadMemberOptions(): void {
+    if (!this.canWrite()) { return; }
+    this.userService.options().subscribe({
+      next: list => this.userOptions.set(
+        (list ?? []).map(u => ({ label: u.fullName || u.email, value: u.id }))
+      ),
+      error: () => this.userOptions.set([])
+    });
+  }
+
   openCreate(): void {
     this.mode = 'create';
+    this.editTarget = null;
     this.formName = '';
     this.formCode = '';
+    this.formClientName = '';
+    this.formLocation = '';
+    this.formGovernorate = '';
+    this.formProjectType = null;
+    this.formStartDate = null;
+    this.formEndDate = null;
+    this.formContractValue = null;
+    this.formMembers = [];
+    this.formDescription = '';
     this.formStatus = 'ACTIF';
-    this.editTarget = null;
     this.showDialog = true;
   }
 
-  openEdit(p: ProjectRow): void {
+  openEdit(p: Project): void {
     this.mode = 'edit';
     this.editTarget = p;
     this.formName = p.name ?? '';
     this.formCode = p.code ?? '';
-    this.formStatus = (p.status ?? 'ACTIF');
+    this.formClientName = p.clientName ?? '';
+    this.formLocation = p.location ?? '';
+    this.formGovernorate = p.governorate ?? '';
+    this.formProjectType = p.projectType ?? null;
+    this.formStartDate = p.startDate ? this.parseDateOnly(p.startDate) : null;
+    this.formEndDate = p.endDate ? this.parseDateOnly(p.endDate) : null;
+    this.formContractValue = p.contractValue ?? null;
+    this.formMembers = [];
+    this.formDescription = p.description ?? '';
+    this.formStatus = p.status ?? 'ACTIF';
     this.showDialog = true;
   }
 
@@ -170,11 +154,34 @@ export class ProjectsComponent implements OnInit {
     if (this.mode === 'edit') { this.saveEdit(); } else { this.create(); }
   }
 
+  private parseDateOnly(s: string): Date | null {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+    if (m) { return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); }
+    const d = new Date(s);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  private createBody(): ProjectCreate {
+    return {
+      name: this.formName.trim(),
+      code: this.formCode.trim() || null,
+      clientName: this.formClientName.trim() || null,
+      location: this.formLocation.trim() || null,
+      governorate: this.formGovernorate.trim() || null,
+      projectType: this.formProjectType,
+      startDate: this.formStartDate,
+      endDate: this.formEndDate,
+      contractValue: this.formContractValue ?? null,
+      description: this.formDescription.trim() || null,
+      memberIds: this.formMembers
+    };
+  }
+
   create(): void {
-    const body = { name: this.formName.trim(), code: this.formCode.trim() || null };
-    this.http.post('/api/projects', body).subscribe({
+    this.projectService.create(this.createBody()).subscribe({
       next: () => {
-        this.msgs.add({ severity: 'success', summary: 'Chantier créé' });
+        this.msgs.add({ severity: 'success',
+          summary: 'Chantier créé — dossiers créés automatiquement' });
         this.showDialog = false; this.load();
       },
       error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
@@ -184,12 +191,20 @@ export class ProjectsComponent implements OnInit {
 
   saveEdit(): void {
     if (!this.editTarget) { return; }
-    const body = {
+    const body: ProjectUpdate = {
       name: this.formName.trim(),
       code: this.formCode.trim() || null,
-      status: this.formStatus
+      status: this.formStatus,
+      clientName: this.formClientName.trim() || null,
+      location: this.formLocation.trim() || null,
+      governorate: this.formGovernorate.trim() || null,
+      projectType: this.formProjectType,
+      startDate: this.formStartDate,
+      endDate: this.formEndDate,
+      contractValue: this.formContractValue ?? null,
+      description: this.formDescription.trim() || null
     };
-    this.http.put(`/api/projects/${this.editTarget.id}`, body).subscribe({
+    this.projectService.update(this.editTarget.id, body).subscribe({
       next: () => {
         this.msgs.add({ severity: 'success', summary: 'Chantier modifié' });
         this.showDialog = false; this.load();

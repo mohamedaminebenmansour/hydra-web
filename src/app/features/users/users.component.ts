@@ -5,9 +5,11 @@ import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { DialogModule } from 'primeng/dialog';
 import { MessageService } from 'primeng/api';
-import { AuthService } from '../../core/auth.service';
-import { PERM } from '../../core/permissions';
-import { EmptyStateComponent } from '../../shared/empty-state.component';
+import { AuthService } from '@app/core/auth.service';
+import { PERM } from '@app/core/permissions';
+import { UserService } from '@app/core/services/user.service';
+import { UserDto } from '@app/core/models/user.model';
+import { EmptyStateComponent } from '@app/shared/empty-state.component';
 
 interface RoleRef { code: string; label: string; }
 
@@ -19,18 +21,6 @@ interface UserRow {
   isActive: boolean;
   roles: RoleRef[];
   lastLoginAt: string | null;
-}
-
-/** Shape returned by GET /api/users (parallel roleCodes/roleLabels arrays). */
-interface UserDto {
-  id: string;
-  email: string;
-  fullName: string;
-  isOwner: boolean;
-  isActive: boolean;
-  roleCodes: string[];
-  roleLabels: string[];
-  lastLoginAt?: string | null;
 }
 
 interface RoleRow { id: string; code: string; label: string; isSystem: boolean; }
@@ -210,7 +200,8 @@ interface RoleRow { id: string; code: string; label: string; isSystem: boolean; 
   `]
 })
 export class UsersComponent {
-  private http = inject(HttpClient);
+  private http = inject(HttpClient); // kept only for /api/roles
+  private userService = inject(UserService);
   private auth = inject(AuthService);
   private msgs = inject(MessageService);
 
@@ -244,8 +235,8 @@ export class UsersComponent {
   constructor() { this.load(); }
 
   load(): void {
-    this.http.get<UserDto[]>('/api/users').subscribe(list => {
-      this.users = list.map(d => ({
+    this.userService.list().subscribe(list => {
+      this.users = (list ?? []).map(d => ({
         id: d.id,
         email: d.email,
         fullName: d.fullName,
@@ -276,7 +267,7 @@ export class UsersComponent {
   }
 
   create(): void {
-    this.http.post('/api/users', {
+    this.userService.create({
       fullName: this.fullName,
       email: this.email,
       password: this.password,
@@ -306,7 +297,7 @@ export class UsersComponent {
   saveRoles(override = false): void {
     if (!this.rolesTarget) return;
     this.rolesConflict = '';
-    this.http.put(`/api/users/${this.rolesTarget.id}/roles`, {
+    this.userService.assignRoles(this.rolesTarget.id, {
       roleCodes: [...this.rolesSelected],
       overrideReason: override ? this.rolesOverrideReason : undefined
     }).subscribe({
@@ -330,7 +321,7 @@ export class UsersComponent {
 
   saveEdit(): void {
     if (!this.editTarget) return;
-    this.http.put(`/api/users/${this.editTarget.id}`, {
+    this.userService.update(this.editTarget.id, {
       fullName: this.editFullName, password: this.editPassword || undefined
     }).subscribe({
       next: () => {
@@ -343,7 +334,7 @@ export class UsersComponent {
   }
 
   setActive(u: UserRow, active: boolean): void {
-    this.http.post(`/api/users/${u.id}/${active ? 'activate' : 'deactivate'}`, {}).subscribe({
+    this.userService.setActive(u.id, active).subscribe({
       next: () => {
         this.msgs.add({ severity: 'success',
           summary: active ? 'Utilisateur réactivé' : 'Utilisateur désactivé' });

@@ -1,0 +1,134 @@
+<div class="head">
+  <h2><i class="pi pi-briefcase"></i> Chantiers</h2>
+  @if (canWrite()) {
+    <p-button icon="pi pi-plus" label="Nouveau chantier" (onClick)="openCreate()" />
+  }
+</div>
+
+<div class="grid">
+  @for (p of projects; track p.id) {
+    <div class="pcard" (click)="open(p)" role="button" tabindex="0"
+         [attr.aria-label]="'Ouvrir ' + p.name" (keyup.enter)="open(p)">
+      <div class="prow">
+        <span class="pname">{{ p.name }}</span>
+        <div class="pbadges">
+          @if (isActive(p)) {
+            <p-tag value="Actif" severity="success" icon="pi pi-check" />
+          } @else {
+            <p-tag value="Clôturé" severity="secondary" icon="pi pi-lock" />
+          }
+          @if (canWrite()) {
+            <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
+                      (onClick)="openEdit(p); $event.stopPropagation()"
+                      [attr.aria-label]="'Modifier ' + p.name" />
+          }
+        </div>
+      </div>
+      @if (p.code) {
+        <div class="pcode"><p-chip [label]="p.code" /></div>
+      }
+      <div class="pmeta">
+        @if (p.clientName) {
+          <span class="mitem"><i class="pi pi-user"></i> {{ p.clientName }}</span>
+        }
+        @if (p.location) {
+          <span class="mitem"><i class="pi pi-map-marker"></i> {{ p.location }}</span>
+        }
+        @if (p.governorate) {
+          <span class="mitem"><i class="pi pi-building"></i> {{ p.governorate }}</span>
+        }
+        @if (p.projectType) {
+          <span class="mitem"><i class="pi pi-tag"></i> {{ typeLabel(p.projectType) }}</span>
+        }
+      </div>
+      @if (p.startDate || p.endDate) {
+        <div class="pdates">
+          <i class="pi pi-calendar"></i>
+          {{ fmtDate(p.startDate) }} → {{ fmtDate(p.endDate) }}
+        </div>
+      }
+    </div>
+  } @empty {
+    <app-empty-state icon="pi pi-briefcase" message="Aucun chantier pour le moment."></app-empty-state>
+  }
+</div>
+
+<p-dialog [(visible)]="showDialog" [modal]="true" [style]="{ width: '640px' }"
+          [styleClass]="'full-dialog'"
+          [header]="mode === 'edit' ? 'Modifier le chantier' : 'Nouveau chantier'">
+  <div class="dlg-form">
+    <div class="field">
+      <label>Nom du chantier *</label>
+      <input pInputText class="inp" placeholder="Nom du chantier"
+             [(ngModel)]="formName" (keyup.enter)="submit()" />
+    </div>
+    <div class="two">
+      <div class="field">
+        <label>Code (optionnel)</label>
+        <input pInputText class="inp" placeholder="Ex. : CHT-01" [(ngModel)]="formCode" />
+      </div>
+      <div class="field">
+        <label>Type de projet</label>
+        <p-select [options]="projectTypeOpts" [(ngModel)]="formProjectType"
+                  placeholder="Choisir un type" [showClear]="true" optionLabel="label"
+                  optionValue="value" styleClass="w100" />
+      </div>
+    </div>
+    <div class="two">
+      <div class="field">
+        <label>Client (optionnel)</label>
+        <input pInputText class="inp" placeholder="Nom du client" [(ngModel)]="formClientName" />
+      </div>
+      <div class="field">
+        <label>Localisation (optionnel)</label>
+        <input pInputText class="inp" placeholder="Lieu" [(ngModel)]="formLocation" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Gouvernorat (optionnel)</label>
+      <input pInputText class="inp" placeholder="Gouvernorat" [(ngModel)]="formGovernorate" />
+    </div>
+    <div class="two">
+      <div class="field">
+        <label>Date de début</label>
+        <p-datepicker [(ngModel)]="formStartDate" dateFormat="dd/mm/yy" [showIcon]="true"
+                      styleClass="w100" placeholder="jj/mm/aa" />
+      </div>
+      <div class="field">
+        <label>Date de fin</label>
+        <p-datepicker [(ngModel)]="formEndDate" dateFormat="dd/mm/yy" [showIcon]="true"
+                      styleClass="w100" placeholder="jj/mm/aa" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Valeur du contrat (optionnel)</label>
+      <p-inputNumber [(ngModel)]="formContractValue" mode="decimal" [min]="0"
+                     placeholder="0.00" styleClass="w100" />
+    </div>
+    @if (mode === 'create' && canWrite()) {
+      <div class="field">
+        <label>Membres (optionnel)</label>
+        <p-multiSelect [options]="memberOpts()" [(ngModel)]="formMembers"
+                       placeholder="Ajouter des membres" optionLabel="label"
+                       optionValue="value" [showClear]="true" [filter]="true"
+                       display="chip" styleClass="w100" />
+      </div>
+    }
+    <div class="field">
+      <label>Description (optionnel)</label>
+      <textarea pTextarea rows="3" [(ngModel)]="formDescription"></textarea>
+    </div>
+    @if (mode === 'edit') {
+      <div class="field">
+        <label>Statut</label>
+        <p-select [options]="statusOpts" [(ngModel)]="formStatus" optionLabel="label"
+                  optionValue="value" styleClass="w100" />
+      </div>
+    }
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Annuler" [text]="true" (onClick)="showDialog = false" />
+    <p-button [label]="mode === 'edit' ? 'Enregistrer' : 'Créer'" icon="pi pi-check"
+              (onClick)="submit()" [disabled]="!formName.trim()" />
+  </ng-template>
+</p-dialog>

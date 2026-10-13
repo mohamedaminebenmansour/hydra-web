@@ -1,0 +1,186 @@
+@if (notFound()) {
+  <app-empty-state icon="pi pi-exclamation-triangle" message="Chantier introuvable ou accès refusé."></app-empty-state>
+} @else if (loading()) {
+  <div class="loading"><i class="pi pi-spin pi-spinner"></i> Chargement…</div>
+} @else if (project()) {
+  @let proj = project();
+  <div class="head">
+    <div class="head-left">
+      <p-button icon="pi pi-arrow-left" label="Retour" [text]="true" (onClick)="back()" />
+      <h2><i class="pi pi-briefcase"></i> {{ proj?.name }}</h2>
+      @if (proj?.code) { <p-chip [label]="proj!.code ?? ''" /> }
+      @if (isActive()) {
+        <p-tag value="Actif" severity="success" icon="pi pi-check" />
+      } @else {
+        <p-tag value="Clôturé" severity="secondary" icon="pi pi-lock" />
+      }
+    </div>
+  </div>
+
+  <div class="pmeta">
+    @if (proj?.clientName) {
+      <span class="mitem"><i class="pi pi-user"></i> {{ proj!.clientName }}</span>
+    }
+    @if (proj?.location) {
+      <span class="mitem"><i class="pi pi-map-marker"></i> {{ proj!.location }}</span>
+    }
+    @if (proj?.governorate) {
+      <span class="mitem"><i class="pi pi-building"></i> {{ proj!.governorate }}</span>
+    }
+    @if (proj?.projectType) {
+      <span class="mitem"><i class="pi pi-tag"></i> {{ typeLabel(proj!.projectType) }}</span>
+    }
+    @if (proj?.startDate || proj?.endDate) {
+      <span class="mitem"><i class="pi pi-calendar"></i>
+        {{ fmtDate(proj?.startDate) }} → {{ fmtDate(proj?.endDate) }}
+      </span>
+    }
+  </div>
+
+  <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($event)">
+    <p-tablist>
+      <p-tab value="0">Équipe</p-tab>
+      <p-tab value="1">Dossiers</p-tab>
+    </p-tablist>
+    <p-tabpanels>
+
+      <p-tabpanel value="0">
+        <div class="panel">
+          <p class="note">
+            <i class="pi pi-info-circle"></i>
+            Seules ces personnes voient ce chantier (sauf propriétaire).
+          </p>
+
+          @if (canManage()) {
+            <div class="panel-actions">
+              <p-button icon="pi pi-user-plus" label="Ajouter un membre"
+                        (onClick)="openAdd()" />
+            </div>
+          }
+
+          @if (members().length) {
+            @for (m of members(); track m.userId) {
+              <div class="mrow">
+                <div class="mleft">
+                  <div class="mname">
+                    {{ m.fullName }}
+                    <p-tag [value]="roleLabel(m.roleOnProject)" [severity]="roleSeverity(m.roleOnProject)" />
+                    @if (m.canUpload) {
+                      <span class="upload" title="Peut téléverser"><i class="pi pi-upload"></i></span>
+                    }
+                  </div>
+                  @if (m.email) { <div class="memail">{{ m.email }}</div> }
+                </div>
+                @if (canManage()) {
+                  <div class="mright">
+                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
+                              (onClick)="openEdit(m)" [attr.aria-label]="'Modifier ' + m.fullName" />
+                    <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger"
+                              (onClick)="confirmRemove(m)" [attr.aria-label]="'Retirer ' + m.fullName" />
+                  </div>
+                }
+              </div>
+            }
+          } @else {
+            <app-empty-state icon="pi pi-users"
+              message="Aucun membre pour le moment."></app-empty-state>
+          }
+        </div>
+      </p-tabpanel>
+
+
+      <p-tabpanel value="1">
+        <div class="panel">
+          @if (folders().length) {
+            <div class="fgrid">
+              @for (f of folders(); track f.id) {
+                <div class="fcard">
+                  <div class="ftop">
+                    <i class="pi pi-folder ficon"></i>
+                    <span class="fname">{{ f.name }}</span>
+                  </div>
+                  <p-tag value="Créé automatiquement" severity="secondary" />
+                </div>
+              }
+            </div>
+          } @else {
+            <app-empty-state icon="pi pi-folder"
+              message="Aucun dossier pour le moment."></app-empty-state>
+          }
+          <p class="note note-docs">
+            <i class="pi pi-info-circle"></i>
+            Les documents arriveront dans une prochaine étape.
+          </p>
+        </div>
+      </p-tabpanel>
+
+    </p-tabpanels>
+  </p-tabs>
+}
+
+<p-dialog [(visible)]="showAddDialog" [modal]="true" [style]="{ width: '480px' }"
+          [styleClass]="'full-dialog'" header="Ajouter un membre">
+  <div class="dlg-form">
+    <div class="field">
+      <label>Utilisateur</label>
+      <input pInputText class="inp" placeholder="Rechercher nom ou email"
+             [(ngModel)]="addFilter" />
+    </div>
+    <div class="user-list">
+      @for (u of filteredUsers(); track u.value) {
+        <div class="user-row" [class.selected]="addUserId === u.value"
+             role="button" tabindex="0"
+             [attr.aria-label]="'Sélectionner ' + u.name"
+             (click)="addUserId = u.value" (keyup.enter)="addUserId = u.value">
+          <div class="name">{{ u.name }}</div>
+          @if (u.email && u.email !== u.name) { <div class="email">{{ u.email }}</div> }
+        </div>
+      } @empty {
+        <div class="user-empty">Aucun utilisateur disponible</div>
+      }
+    </div>
+    <div class="field">
+      <label>Rôle sur le chantier</label>
+      <p-select [options]="roleOpts" [(ngModel)]="addRole" optionLabel="label"
+                optionValue="value" styleClass="w100" />
+    </div>
+    <div class="switch-row">
+      <p-toggleswitch [(ngModel)]="addCanUpload" inputId="add-upload" />
+      <label for="add-upload">Peut téléverser des documents</label>
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Annuler" [text]="true" (onClick)="showAddDialog = false" />
+    <p-button label="Ajouter" icon="pi pi-check" (onClick)="saveAdd()"
+              [disabled]="!addUserId" />
+  </ng-template>
+</p-dialog>
+
+<p-dialog [(visible)]="showEditDialog" [modal]="true" [style]="{ width: '480px' }"
+          [styleClass]="'full-dialog'" header="Modifier le membre">
+  <div class="dlg-form">
+    <div class="dlg-who">{{ editTarget?.fullName }}</div>
+    <div class="field">
+      <label>Rôle sur le chantier</label>
+      <p-select [options]="roleOpts" [(ngModel)]="editRole" optionLabel="label"
+                optionValue="value" styleClass="w100" />
+    </div>
+    <div class="switch-row">
+      <p-toggleswitch [(ngModel)]="editCanUpload" inputId="edit-upload" />
+      <label for="edit-upload">Peut téléverser des documents</label>
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Annuler" [text]="true" (onClick)="showEditDialog = false" />
+    <p-button label="Enregistrer" icon="pi pi-check" (onClick)="saveEdit()" />
+  </ng-template>
+</p-dialog>
+
+<p-dialog [(visible)]="showRemoveDialog" [modal]="true" [style]="{ width: '440px' }"
+          header="Retirer le membre">
+  <p>Retirer <strong>{{ removeTarget?.fullName }}</strong> de ce chantier ?</p>
+  <ng-template pTemplate="footer">
+    <p-button label="Annuler" [text]="true" (onClick)="showRemoveDialog = false" />
+    <p-button label="Retirer" icon="pi pi-trash" severity="danger" (onClick)="doRemove()" />
+  </ng-template>
+</p-dialog>

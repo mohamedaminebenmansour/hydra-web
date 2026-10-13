@@ -15,6 +15,8 @@ export const routes: Routes = [
         loadComponent: () => import('./features/tickets/tickets.component').then(m => m.TicketsComponent) },
       { path: 'projects', canActivate: [permGuard(PERM.PROJECT_READ)],
         loadComponent: () => import('./features/projects/projects.component').then(m => m.ProjectsComponent) },
+      { path: 'projects/:id', canActivate: [permGuard(PERM.PROJECT_READ)],
+        loadComponent: () => import('./features/projects/project-detail.component').then(m => m.ProjectDetailComponent) },
       { path: 'users', canActivate: [permGuard(PERM.USER_CREATE)],
         loadComponent: () => import('./features/users/users.component').then(m => m.UsersComponent) },
       { path: 'roles', canActivate: [permGuard(PERM.ROLE_MANAGE)],

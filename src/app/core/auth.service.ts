@@ -4,6 +4,8 @@ import { Router } from '@angular/router';
 import { Observable, catchError, map, of, tap } from 'rxjs';
 
 export interface Me {
+  // NOTE (optional backend gap): /api/auth/me currently returns no id, so
+  // isAssignee() in tickets won't match until the backend includes it.
   id?: string;
   email: string;
   fullName: string;
