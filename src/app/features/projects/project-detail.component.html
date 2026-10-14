@@ -102,6 +102,11 @@
                     <span class="fname">{{ f.name }}</span>
                   </div>
                   <p-tag value="Créé automatiquement" severity="secondary" />
+                  <div class="fbadges">
+                    <p-tag value="Hérite projet" severity="info" icon="pi pi-shield" />
+                    <p-button icon="pi pi-lock" [rounded]="true" [text]="true" [disabled]="true"
+                              pTooltip="Bientôt : droits par dossier" tooltipPosition="top" />
+                  </div>
                 </div>
               }
             </div>

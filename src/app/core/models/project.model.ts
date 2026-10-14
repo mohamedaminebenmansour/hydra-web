@@ -30,7 +30,7 @@ export interface ProjectCreate {
   endDate?: Date | string | null;
   description?: string | null;
   contractValue?: number | null;
-  memberIds?: string[];
+  memberUserIds?: string[];
 }
 
 /** PUT /api/projects/{id} */

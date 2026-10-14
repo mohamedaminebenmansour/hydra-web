@@ -9,6 +9,7 @@ import { TabsModule } from 'primeng/tabs';
 import { DialogModule } from 'primeng/dialog';
 import { TagModule } from 'primeng/tag';
 import { ChipModule } from 'primeng/chip';
+import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '@app/core/auth.service';
 import { PERM } from '@app/core/permissions';
@@ -34,6 +35,7 @@ import { EmptyStateComponent } from '@app/shared/empty-state.component';
     DialogModule,
     TagModule,
     ChipModule,
+    TooltipModule,
     EmptyStateComponent
   ],
   templateUrl: './project-detail.component.html',

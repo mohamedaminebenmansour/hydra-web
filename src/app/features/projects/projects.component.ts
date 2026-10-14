@@ -173,16 +173,17 @@ export class ProjectsComponent implements OnInit {
       endDate: this.formEndDate,
       contractValue: this.formContractValue ?? null,
       description: this.formDescription.trim() || null,
-      memberIds: this.formMembers
+      memberUserIds: this.formMembers
     };
   }
 
   create(): void {
     this.projectService.create(this.createBody()).subscribe({
-      next: () => {
+      next: (project) => {
         this.msgs.add({ severity: 'success',
           summary: 'Chantier créé — dossiers créés automatiquement' });
-        this.showDialog = false; this.load();
+        this.showDialog = false;
+        this.router.navigate(['/projects', project.id]);
       },
       error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
         detail: err.error?.message ?? 'Création impossible' })
