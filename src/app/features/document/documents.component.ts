@@ -233,7 +233,9 @@ export class DocumentsComponent implements OnInit {
         this.uploading.set(false);
         this.fileUpload?.clear();
         this.msgs.add({ severity: 'error', summary: 'Erreur',
-          detail: err.error?.message ?? err.error?.error ?? 'Téléversement impossible' });
+          detail: err.error?.message ?? err.error?.code ?? (err.status === 413
+            ? 'Fichier trop volumineux (max 50 Mo)'
+            : 'Téléversement impossible') });
       }
     });
   }
@@ -272,7 +274,10 @@ export class DocumentsComponent implements OnInit {
       error: err => {
         this.uploading.set(false);
         this.revFileUpload?.clear();
-        this.msgs.add({ severity: 'error', summary: 'Erreur', detail: err.error?.message ?? 'Révision impossible' });
+        this.msgs.add({ severity: 'error', summary: 'Erreur',
+          detail: err.error?.message ?? err.error?.code ?? (err.status === 413
+            ? 'Fichier trop volumineux (max 50 Mo)'
+            : 'Révision impossible') });
       }
     });
   }

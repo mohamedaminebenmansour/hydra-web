@@ -115,15 +115,15 @@
     <div class="field">
       <label>Fichier *</label>
       <p-fileUpload #fileUpload mode="advanced" customUpload="true" [auto]="false" [multiple]="false"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.dwg,.dxf,.zip"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.dwg,.dxf,.zip,.txt,.csv"
                     [maxFileSize]="52428800" chooseLabel="Choisir un fichier"
-                    uploadLabel="Téléverser" cancelLabel="Annuler"
+                    uploadLabel="Téleverser" cancelLabel="Annuler"
                     (uploadHandler)="onUploadFile($event)"
                     [showUploadButton]="!uploading()" [showCancelButton]="!uploading()"></p-fileUpload>
       @if (uploading()) {
         <p-progressBar [value]="uploadProgress()" [showValue]="true"></p-progressBar>
       }
-      <small class="hint">PDF, Office, images, plans (DWG/DXF) ou archive — 50 Mo max.</small>
+      <small class="hint">PDF, Word, Excel, images, plans (DWG/DXF), ZIP — 50 Mo max.</small>
     </div>
   </div>
   <ng-template pTemplate="footer">
@@ -146,8 +146,9 @@
     <div class="field">
       <label>Fichier *</label>
       <p-fileUpload #revFileUpload mode="advanced" customUpload="true" [auto]="false" [multiple]="false"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.dwg,.dxf,.zip,.txt,.csv"
                     [maxFileSize]="52428800" chooseLabel="Choisir un fichier"
-                    uploadLabel="Téléverser" cancelLabel="Annuler"
+                    uploadLabel="Téleverser" cancelLabel="Annuler"
                     (uploadHandler)="onRevFile($event)"
                     [showUploadButton]="!uploading()" [showCancelButton]="!uploading()"></p-fileUpload>
       @if (uploading()) {
