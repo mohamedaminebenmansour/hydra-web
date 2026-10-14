@@ -1,5 +1,6 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
@@ -17,42 +18,18 @@ import { UserService } from '@app/core/services/user.service';
 import { TicketService } from '@app/core/services/ticket.service';
 import { SelectOption } from '@app/core/models/select-option';
 import { Project } from '@app/core/models/project.model';
-import { Ticket } from '@app/core/models/ticket.model';
+import {
+  Ticket, TICKET_STATUS_OPTS, TICKET_STATUS_LABELS, TICKET_STATUS_SEVERITY,
+  TICKET_STATUS_FLOW, TICKET_PRIORITY_OPTS, TICKET_PRIORITY_LABELS, TicketStatus
+} from '@app/core/models/ticket.model';
 import { EmptyStateComponent } from '@app/shared/empty-state.component';
-
-const STATUS_LABELS: Record<string, string> = {
-  OUVERT: 'Ouvert', EN_COURS: 'En cours', EN_ATTENTE: 'En attente', RESOLU: 'Résolu'
-};
-const STATUS_ICONS: Record<string, string> = {
-  OUVERT: 'pi pi-circle', EN_COURS: 'pi pi-play', EN_ATTENTE: 'pi pi-pause', RESOLU: 'pi pi-check'
-};
-const STATUS_CLASS: Record<string, string> = {
-  OUVERT: 'st-ouvert', EN_COURS: 'st-encours', EN_ATTENTE: 'st-attente', RESOLU: 'st-resolu'
-};
-const PRIORITY_LABELS: Record<string, string> = {
-  LOW: 'Basse', MEDIUM: 'Moyenne', HIGH: 'Haute'
-};
-const PRIORITY_ICONS: Record<string, string> = {
-  HIGH: 'pi pi-exclamation-triangle', MEDIUM: 'pi pi-minus', LOW: 'pi pi-circle'
-};
-const PRIORITY_CLASS: Record<string, string> = {
-  HIGH: 'prio-high', MEDIUM: 'prio-med', LOW: 'prio-low'
-};
 
 @Component({
   selector: 'app-tickets',
   standalone: true,
   imports: [
-    FormsModule,
-    ButtonModule,
-    InputTextModule,
-    TextareaModule,
-    SelectModule,
-    DatePickerModule,
-    DialogModule,
-    TagModule,
-    ChipModule,
-    ToggleSwitchModule,
+    FormsModule, ButtonModule, InputTextModule, TextareaModule, SelectModule,
+    DatePickerModule, DialogModule, TagModule, ChipModule, ToggleSwitchModule,
     EmptyStateComponent
   ],
   templateUrl: './tickets.component.html',
@@ -63,6 +40,7 @@ export class TicketsComponent implements OnInit {
   private projectService = inject(ProjectService);
   private userService = inject(UserService);
   private auth = inject(AuthService);
+  private router = inject(Router);
   private msgs = inject(MessageService);
 
   tickets = signal<Ticket[]>([]);
@@ -71,18 +49,8 @@ export class TicketsComponent implements OnInit {
   loaded = signal(false);
   showDialog = signal(false);
 
-  readonly statusOpts = [
-    { label: 'Tous', value: '' },
-    { label: 'Ouvert', value: 'OUVERT' },
-    { label: 'En cours', value: 'EN_COURS' },
-    { label: 'En attente', value: 'EN_ATTENTE' },
-    { label: 'Résolu', value: 'RESOLU' }
-  ];
-  readonly priorityOpts = [
-    { label: 'Priorité basse', value: 'LOW' },
-    { label: 'Priorité moyenne', value: 'MEDIUM' },
-    { label: 'Priorité haute', value: 'HIGH' }
-  ];
+  readonly statusOpts = [{ label: 'Tous', value: '' }, ...TICKET_STATUS_OPTS];
+  readonly priorityOpts = TICKET_PRIORITY_OPTS;
 
   fProject: string | null = null;
   fStatus = '';
@@ -90,6 +58,7 @@ export class TicketsComponent implements OnInit {
   fMine = false;
 
   mode: 'create' | 'edit' = 'create';
+  editTarget: Ticket | null = null;
   formTitle = '';
   formDescription = '';
   formProject: string | null = null;
@@ -98,133 +67,121 @@ export class TicketsComponent implements OnInit {
   formStart: Date | null = null;
   formDue: Date | null = null;
   formDocumentId = '';
-  private editTarget: Ticket | null = null;
 
   canWrite = computed(() => this.auth.can(PERM.TICKET_WRITE));
-  canAssign = computed(() => this.auth.can(PERM.TICKET_ASSIGN));
+  canAssign = computed(() => this.auth.can(PERM.TICKET_ASSIGN) || this.auth.can(PERM.TICKET_WRITE));
 
-  // computed() only tracks signals — these read the signal sources above.
   projectOpts = computed(() =>
-    this.projects().map(p => ({ label: p.name, value: p.id })));
+    this.projects().map(p => ({ label: p.code ? `${p.code} — ${p.name}` : p.name, value: p.id })));
   activeProjectOpts = computed(() =>
-    this.projects()
-      .filter(p => (p.status ?? 'ACTIF') === 'ACTIF')
-      .map(p => ({ label: p.name, value: p.id })));
-  // userOptions is already SelectOption[] — expose directly.
+    this.projects().filter(p => p.status === 'ACTIF')
+      .map(p => ({ label: p.code ? `${p.code} — ${p.name}` : p.name, value: p.id })));
   assigneeOpts = computed(() => this.userOptions());
 
-  ngOnInit(): void { this.loadRefs(); this.apply(); }
-
-  loadRefs(): void {
-    this.projectService.options().subscribe({
-      next: list => this.projects.set(list),
-      error: () => this.projectService.list().subscribe({
-        next: list => this.projects.set(list),
-        error: () => this.projects.set([])
-      })
+  ngOnInit(): void {
+    this.projectService.list().subscribe({
+      next: list => { this.projects.set(list ?? []); this.apply(); },
+      error: () => { this.projects.set([]); this.apply(); }
     });
-
-    if (this.canWrite() || this.canAssign()) {
-      this.userService.options().subscribe({
-        next: list => this.userOptions.set(
-          (list ?? []).map(u => ({
-            label: u.fullName || u.email,
-            value: u.id
-          }))
-        ),
-        error: () => this.userOptions.set([])
-      });
-    }
+    this.userService.options().subscribe({
+      next: users => this.userOptions.set((users ?? []).map(u => ({ label: u.fullName, value: u.id }))),
+      error: () => this.userOptions.set([])
+    });
   }
 
   apply(): void {
+    this.loaded.set(false);
     this.ticketService.list({
       projectId: this.fProject,
-      status: this.fStatus,
+      status: this.fStatus || null,
       priority: this.fPriority,
-      mine: this.fMine
+      mine: this.fMine || undefined
     }).subscribe({
-      next: list => { this.tickets.set((list ?? []).map(t => this.mapTicket(t))); this.loaded.set(true); },
-      error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Chargement impossible' })
+      next: list => { this.tickets.set(list ?? []); this.loaded.set(true); },
+      error: () => { this.tickets.set([]); this.loaded.set(true); }
     });
   }
 
   reset(): void {
-    this.fProject = null;
-    this.fStatus = '';
-    this.fPriority = null;
-    this.fMine = false;
+    this.fProject = null; this.fStatus = ''; this.fPriority = null; this.fMine = false;
     this.apply();
   }
 
-  statusLabel(s: string): string { return STATUS_LABELS[s] ?? s; }
-  statusIcon(s: string): string { return STATUS_ICONS[s] ?? 'pi pi-circle'; }
-  statusClass(s: string): string { return 'status ' + (STATUS_CLASS[s] ?? 'st-attente'); }
-  priorityLabel(p: string): string { return PRIORITY_LABELS[p] ?? p; }
-  priorityIcon(p: string): string { return PRIORITY_ICONS[p] ?? 'pi pi-circle'; }
-  priorityClass(p: string): string { return 'prio ' + (PRIORITY_CLASS[p] ?? 'prio-low'); }
-
-  isOverdue(t: Ticket): boolean {
-    if (t.status === 'RESOLU' || !t.dueAt) { return false; }
-    const due = new Date(t.dueAt);
-    if (isNaN(due.getTime())) { return false; }
-    const endOfToday = new Date();
-    endOfToday.setHours(23, 59, 59, 999);
-    return due < endOfToday;
-  }
-
-  private isAssignee(t: Ticket): boolean {
-    const myId = this.auth.me()?.id;
-    return !!t.assignedToId && !!myId && t.assignedToId === myId;
-  }
-
-  canAct(t: Ticket): boolean { return this.canWrite() || this.isAssignee(t); }
-
-  fmtDate(iso: string): string {
-    const d = new Date(iso);
-    if (isNaN(d.getTime())) { return iso; }
-    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  }
+  openTicket(t: Ticket): void { this.router.navigate(['/tickets', t.id]); }
 
   openCreate(): void {
-    this.mode = 'create';
-    this.editTarget = null;
-    this.formTitle = '';
-    this.formDescription = '';
-    this.formPriority = 'MEDIUM';
-    this.formStart = null;
-    this.formDue = null;
-    this.formDocumentId = '';
-    this.formAssignee = null;
-    const active = this.activeProjectOpts();
-    this.formProject = active.length === 1 ? active[0].value : null;
+    this.mode = 'create'; this.editTarget = null;
+    this.formTitle = ''; this.formDescription = ''; this.formProject = null;
+    this.formAssignee = null; this.formPriority = 'MEDIUM';
+    this.formStart = null; this.formDue = null; this.formDocumentId = '';
     this.showDialog.set(true);
   }
 
   openEdit(t: Ticket): void {
-    this.mode = 'edit';
-    this.editTarget = t;
-    this.formTitle = t.title;
-    this.formDescription = t.description ?? '';
-    this.formProject = t.projectId;
-    this.formAssignee = t.assignedToId;
+    this.mode = 'edit'; this.editTarget = t;
+    this.formTitle = t.title; this.formDescription = t.description ?? '';
+    this.formProject = t.projectId; this.formAssignee = t.assignedToId;
     this.formPriority = t.priority ?? 'MEDIUM';
-    this.formStart = t.startAt ? this.parseDateOnly(t.startAt) : null;
-    this.formDue = t.dueAt ? this.parseDateOnly(t.dueAt) : null;
+    this.formStart = this.parseDateOnly(t.startAt); this.formDue = this.parseDateOnly(t.dueAt);
     this.formDocumentId = t.documentId ?? '';
     this.showDialog.set(true);
   }
+  // ── workflow helpers (transmittal / RFI) ──────────────────────────
+  statusLabel(s: string): string { return TICKET_STATUS_LABELS[s] ?? s; }
+  statusSeverity(s: string): 'success'|'info'|'warn'|'danger'|'secondary'|'contrast' { return TICKET_STATUS_SEVERITY[s] ?? 'secondary'; }
 
+  nextStatuses(t: Ticket): TicketStatus[] {
+    return TICKET_STATUS_FLOW[(t.status as TicketStatus)] ?? [];
+  }
+
+  canAdvance(t: Ticket): boolean {
+    return this.canWrite() && this.nextStatuses(t).length > 0;
+  }
+
+  advance(t: Ticket, next: string): void {
+    this.ticketService.setStatus(t.id, next).subscribe({
+      next: () => {
+        this.msgs.add({ severity: 'success', summary: 'Statut mis à jour',
+          detail: TICKET_STATUS_LABELS[next] ?? next });
+        this.apply();
+      },
+      error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
+        detail: err.error?.message ?? 'Transition impossible' })
+    });
+  }
+
+  priorityLabel(p: string | null | undefined): string { return p ? (TICKET_PRIORITY_LABELS[p] ?? p) : '—'; }
+
+  isOverdue(t: Ticket): boolean {
+    if (!t.dueAt || t.status === 'AS_BUILT') { return false; }
+    const due = this.parseDateOnly(t.dueAt);
+    if (!due) { return false; }
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return due < today;
+  }
+
+  fmtDate(s: string | null): string {
+    if (!s) { return '—'; }
+    const d = this.parseDateOnly(s) ?? new Date(s);
+    if (isNaN(d.getTime())) { return s; }
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
+
+  projectNameOf(t: Ticket): string {
+    if (t.projectName) { return t.projectName; }
+    return this.projects().find(p => p.id === t.projectId)?.name ?? '—';
+  }
+
+  // ── create / edit ────────────────────────────────────────────────
   submit(): void {
     if (!this.formTitle.trim()) { return; }
     if (this.mode === 'edit') { this.saveEdit(); } else { this.create(); }
   }
 
-  private parseDateOnly(s: string): Date | null {
+  private parseDateOnly(s: string | null | undefined): Date | null {
+    if (!s) { return null; }
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-    if (m) {
-      return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-    }
+    if (m) { return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); }
     const d = new Date(s);
     return isNaN(d.getTime()) ? null : d;
   }
@@ -263,55 +220,5 @@ export class TicketsComponent implements OnInit {
       error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
         detail: err.error?.message ?? 'Modification impossible' })
     });
-  }
-
-  start(id: string): void {
-    this.ticketService.start(id).subscribe({
-      next: () => { this.msgs.add({ severity: 'success', summary: 'Ticket démarré' }); this.apply(); },
-      error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
-        detail: err.error?.message ?? 'Action impossible' })
-    });
-  }
-
-  wait(id: string): void {
-    this.ticketService.wait(id).subscribe({
-      next: () => { this.msgs.add({ severity: 'success', summary: 'Ticket en attente' }); this.apply(); },
-      error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
-        detail: err.error?.message ?? 'Action impossible' })
-    });
-  }
-
-  resume(id: string): void {
-    this.ticketService.resume(id).subscribe({
-      next: () => { this.msgs.add({ severity: 'success', summary: 'Ticket repris' }); this.apply(); },
-      error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
-        detail: err.error?.message ?? 'Action impossible' })
-    });
-  }
-
-  close(id: string): void {
-    this.ticketService.close(id).subscribe({
-      next: () => { this.msgs.add({ severity: 'success', summary: 'Ticket résolu' }); this.apply(); },
-      error: (err) => this.msgs.add({ severity: 'error', summary: 'Erreur',
-        detail: err.error?.message ?? 'Action impossible' })
-    });
-  }
-
-  private mapTicket(t: any): Ticket {
-    return {
-      id: t.id,
-      title: t.title,
-      description: t.description ?? null,
-      status: t.status ?? 'OUVERT',
-      priority: t.priority ?? 'MEDIUM',
-      projectId: t.projectId ?? null,
-      projectName: t.projectName ?? null,
-      assignedToId: t.assignedToId ?? t.assignedTo ?? null,
-      assignedToName: t.assignedToName ?? t.assigneeName ?? null,
-      startAt: t.startAt ?? null,
-      dueAt: t.dueAt ?? null,
-      documentId: t.documentId ?? null,
-      createdAt: t.createdAt
-    };
   }
 }

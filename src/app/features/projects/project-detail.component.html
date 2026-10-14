@@ -64,7 +64,7 @@
                 <div class="mleft">
                   <div class="mname">
                     {{ m.fullName }}
-                    <p-tag [value]="roleLabel(m.roleOnProject)" [severity]="roleSeverity(m.roleOnProject)" />
+                    <p-tag [value]="roleLabel(m.projectRole)" [severity]="roleSeverity(m.projectRole)" />
                     @if (m.canUpload) {
                       <span class="upload" title="Peut téléverser"><i class="pi pi-upload"></i></span>
                     }
@@ -94,7 +94,9 @@
           @if (folders().length) {
             <div class="fgrid">
               @for (f of folders(); track f.id) {
-                <div class="fcard">
+                <div class="fcard" (click)="openFolder(f)" role="button" tabindex="0"
+                     [attr.aria-label]="'Ouvrir le dossier ' + f.name"
+                     (keyup.enter)="openFolder(f)">
                   <div class="ftop">
                     <i class="pi pi-folder ficon"></i>
                     <span class="fname">{{ f.name }}</span>
@@ -109,7 +111,7 @@
           }
           <p class="note note-docs">
             <i class="pi pi-info-circle"></i>
-            Les documents arriveront dans une prochaine étape.
+            Cliquez sur un dossier pour consulter ses documents.
           </p>
         </div>
       </p-tabpanel>

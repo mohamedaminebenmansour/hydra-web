@@ -25,19 +25,18 @@
 <div class="list">
   @for (t of tickets(); track t.id) {
     <div class="card">
-      <div class="status" [class]="statusClass(t.status)">
-        <i [class]="statusIcon(t.status)"></i>
-        <span class="status-text">{{ statusLabel(t.status) }}</span>
+      <div class="status">
+        <p-tag [value]="statusLabel(t.status)" [severity]="statusSeverity(t.status)" />
       </div>
       <div class="left">
-        <div class="title">
+        <div class="title" (click)="openTicket(t)">
           {{ t.title }}
           @if (isOverdue(t)) { <span class="retard">En retard</span> }
         </div>
         @if (t.description) { <div class="sub">{{ t.description }}</div> }
         <div class="meta">
-          <span class="prio" [class]="priorityClass(t.priority)">
-            <i [class]="priorityIcon(t.priority)"></i> {{ priorityLabel(t.priority) }}
+          <span class="prio prio-{{ (t.priority ?? 'MEDIUM').toLowerCase() }}">
+            {{ priorityLabel(t.priority ?? 'MEDIUM') }}
           </span>
           @if (t.projectName) { <p-chip [label]="t.projectName" /> }
           <span class="assignee">
@@ -51,22 +50,13 @@
         </div>
       </div>
       <div class="right">
-        @if (t.status === 'OUVERT' && canAct(t)) {
-          <p-button label="Démarrer" icon="pi pi-play" size="large" severity="info"
-                    (onClick)="start(t.id)" />
+        @for (next of nextStatuses(t); track next) {
+          <p-button [label]="statusLabel(next)" icon="pi pi-arrow-right" size="large"
+                    [severity]="next === 'AS_BUILT' ? 'success' : 'info'"
+                    (onClick)="advance(t, next)" [disabled]="!canWrite()" />
         }
-        @if (t.status === 'EN_COURS' && canAct(t)) {
-          <p-button label="Pause" icon="pi pi-pause" size="large" severity="secondary"
-                    (onClick)="wait(t.id)" />
-        }
-        @if ((t.status === 'EN_COURS' || t.status === 'EN_ATTENTE') && canAct(t)) {
-          <p-button label="Reprendre" icon="pi pi-refresh" size="large" severity="info"
-                    (onClick)="resume(t.id)" />
-        }
-        @if ((t.status === 'OUVERT' || t.status === 'EN_COURS' || t.status === 'EN_ATTENTE') && canAct(t)) {
-          <p-button label="Clôturer" icon="pi pi-check-circle" size="large" severity="success"
-                    (onClick)="close(t.id)" />
-        }
+        <p-button icon="pi pi-eye" [rounded]="true" [text]="true"
+                  (onClick)="openTicket(t)" [attr.aria-label]="'Voir ' + t.title" />
         @if (canWrite()) {
           <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
                     (onClick)="openEdit(t)" [attr.aria-label]="'Modifier ' + t.title" />

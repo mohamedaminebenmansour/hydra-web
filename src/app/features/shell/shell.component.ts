@@ -1,9 +1,10 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { ToastModule } from 'primeng/toast';
-import { AuthService } from '../../core/auth.service';
-import { PERM } from '../../core/permissions';
+import { AuthService } from '@app/core/auth.service';
+import { PERM } from '@app/core/permissions';
+import { ProjectService } from '@app/core/services/project.service';
 
 interface NavItem { label: string; icon: string; path: string; perm: string; }
 
@@ -32,6 +33,20 @@ const NAV: NavItem[] = [
             </a>
           }
         </nav>
+
+        @if (showProjects()) {
+          <div class="side-projects">
+            <div class="side-title">Projets</div>
+            @for (p of projects(); track p.id) {
+              <a [routerLink]="['/projects', p.id]" routerLinkActive="active">
+                <i class="pi pi-folder"></i> {{ p.name }}
+              </a>
+            }
+            <a class="see-all" [routerLink]="['/projects']">
+              <i class="pi pi-list"></i> Voir tout
+            </a>
+          </div>
+        }
       </aside>
       <div class="col">
         <header class="topbar">
@@ -54,6 +69,18 @@ const NAV: NavItem[] = [
       font-size: 17px; display: flex; gap: 12px; align-items: center; }
     nav a:hover { background: #1e293b; color: #fff; }
     nav a.active { background: #0ea5e9; color: #fff; }
+    .side-projects { margin-top: 22px; padding-top: 14px; border-top: 1px solid #1e293b;
+      display: flex; flex-direction: column; gap: 2px; }
+    .side-title { font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase;
+      letter-spacing: 0.08em; padding: 0 12px 6px; }
+    .side-projects a { color: #cbd5e1; text-decoration: none; padding: 9px 12px; border-radius: 8px;
+      font-size: 15px; display: flex; gap: 10px; align-items: center;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .side-projects a i { color: #64748b; flex-shrink: 0; }
+    .side-projects a:hover { background: #1e293b; color: #fff; }
+    .side-projects a.active { background: #0ea5e9; color: #fff; }
+    .side-projects a.active i { color: #fff; }
+    .side-projects .see-all { margin-top: 6px; font-weight: 600; color: #38bdf8; }
     .col { flex: 1; display: flex; flex-direction: column; min-width: 0; }
     .topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 24px;
       display: flex; justify-content: space-between; align-items: center; }
@@ -63,9 +90,22 @@ const NAV: NavItem[] = [
     footer { text-align: center; color: #94a3b8; font-size: 13px; padding: 12px; }
   `]
 })
-export class ShellComponent {
+export class ShellComponent implements OnInit {
   private auth = inject(AuthService);
+  private projectService = inject(ProjectService);
+
+  projects = signal<{ id: string; name: string }[]>([]);
+  showProjects = computed(() => this.auth.can(PERM.PROJECT_READ));
   name = computed(() => this.auth.me()?.fullName ?? '');
   menu = computed(() => NAV.filter(i => this.auth.can(i.perm)));
+
+  ngOnInit(): void {
+    if (!this.showProjects()) { return; }
+    this.projectService.options().subscribe({
+      next: list => this.projects.set((list ?? []).slice(0, 6)),
+      error: () => this.projects.set([])
+    });
+  }
+
   logout(): void { this.auth.logout(); }
 }

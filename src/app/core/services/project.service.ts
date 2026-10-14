@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import {
   Project, ProjectCreate, ProjectUpdate, ProjectMember, ProjectFolder,
-  MemberCreate, MemberUpdate, mapProject
+  MemberCreate, MemberUpdate, MyPermissions, mapMyPermissions, mapProject
 } from '@app/core/models/project.model';
 
 @Injectable({ providedIn: 'root' })
@@ -17,17 +17,9 @@ export class ProjectService {
     );
   }
 
-  /** GET /api/projects/options — lightweight list for dropdowns. */
-  options(): Observable<Project[]> {
-    return this.http.get<Project[]>('/api/projects/options').pipe(
-      map(list => (list ?? []).map(p => ({
-        id: p.id,
-        name: p.name,
-        code: p.code ?? null,
-        status: p.status ?? 'ACTIF',
-        createdAt: p.createdAt
-      })))
-    );
+  /** Backend GET /api/projects/options → [{ id, name }] (lightweight). */
+  options(): Observable<{ id: string; name: string }[]> {
+    return this.http.get<{ id: string; name: string }[]>('/api/projects/options');
   }
 
   /** GET /api/projects/{id} */
@@ -68,6 +60,18 @@ export class ProjectService {
   /** GET /api/projects/{id}/folders — auto-created by backend. */
   listFolders(id: string): Observable<ProjectFolder[]> {
     return this.http.get<ProjectFolder[]>(`/api/projects/${id}/folders`);
+  }
+
+  /**
+   * GET /api/projects/{id}/me — the current user's membership & upload rights
+   * on this project. Used for project-scoped UI gating (hide upload button).
+   * Returns a safe default so a 403 (non-member) never breaks the caller.
+   */
+  myPermissions(id: string): Observable<MyPermissions> {
+    return this.http.get<any>(`/api/projects/${id}/me`).pipe(
+      map(raw => mapMyPermissions(raw)),
+      // Backend always returns 200 here; the catchError keeps callers resilient.
+    );
   }
 
   /** Backend expects yyyy-MM-dd date strings, not full ISO datetimes. */

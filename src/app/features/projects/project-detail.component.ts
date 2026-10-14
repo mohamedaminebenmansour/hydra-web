@@ -15,7 +15,7 @@ import { PERM } from '@app/core/permissions';
 import { ProjectService } from '@app/core/services/project.service';
 import { UserService } from '@app/core/services/user.service';
 import {
-  Project, ProjectMember, ProjectRole,
+  Project, ProjectFolder, ProjectMember, ProjectRole,
   PROJECT_TYPE_LABELS, PROJECT_ROLE_OPTS, PROJECT_ROLE_LABELS
 } from '@app/core/models/project.model';
 import { UserOptionDto } from '@app/core/models/user.model';
@@ -49,11 +49,12 @@ export class ProjectDetailComponent implements OnInit {
 
   project = signal<Project | null>(null);
   members = signal<ProjectMember[]>([]);
-  folders = signal<{ id: string; name: string; code?: string | null; createdAt?: string | null }[]>([]);
+  folders = signal<ProjectFolder[]>([]);
   users = signal<UserOptionDto[]>([]);
 
   loading = signal(true);
   notFound = signal(false);
+  projectId: string | null = null;
   activeTab = signal<string | number>('0');
 
   readonly roleOpts = PROJECT_ROLE_OPTS;
@@ -62,13 +63,13 @@ export class ProjectDetailComponent implements OnInit {
   showAddDialog = false;
   addUserId: string | null = null;
   addFilter = '';
-  addRole: ProjectRole = 'MEMBER';
+  addRole: ProjectRole = 'ENGINEER';
   addCanUpload = false;
 
   // edit dialog
   showEditDialog = false;
   editTarget: ProjectMember | null = null;
-  editRole: ProjectRole = 'MEMBER';
+  editRole: ProjectRole = 'ENGINEER';
   editCanUpload = false;
 
   // remove dialog
@@ -87,6 +88,7 @@ export class ProjectDetailComponent implements OnInit {
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
+    this.projectId = id;
     if (!id) { this.notFound.set(true); this.loading.set(false); return; }
 
     this.projectService.get(id).subscribe({
@@ -134,8 +136,8 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   roleSeverity(r: string | null | undefined): 'success' | 'info' | 'secondary' {
-    if (r === 'MANAGER') { return 'success'; }
-    if (r === 'MEMBER') { return 'info'; }
+    if (r === 'ADMIN' || r === 'MANAGER') { return 'success'; }
+    if (r === 'ENGINEER') { return 'info'; }
     return 'secondary';
   }
 
@@ -148,10 +150,15 @@ export class ProjectDetailComponent implements OnInit {
 
   back(): void { this.router.navigate(['/projects']); }
 
+  openFolder(f: { id: string }): void {
+    if (!this.projectId) { return; }
+    this.router.navigate(['/projects', this.projectId, 'folders', f.id]);
+  }
+
   openAdd(): void {
     this.addUserId = null;
     this.addFilter = '';
-    this.addRole = 'MEMBER';
+    this.addRole = 'ENGINEER';
     this.addCanUpload = false;
     this.showAddDialog = true;
   }
@@ -169,7 +176,7 @@ export class ProjectDetailComponent implements OnInit {
     if (!id || !this.addUserId) { return; }
     this.projectService.addMember(id, {
       userId: this.addUserId,
-      roleOnProject: this.addRole,
+      projectRole: this.addRole,
       canUpload: this.addCanUpload
     }).subscribe({
       next: () => {
@@ -184,7 +191,7 @@ export class ProjectDetailComponent implements OnInit {
 
   openEdit(m: ProjectMember): void {
     this.editTarget = m;
-    this.editRole = (m.roleOnProject as ProjectRole) ?? 'MEMBER';
+    this.editRole = (m.projectRole as ProjectRole) ?? 'ENGINEER';
     this.editCanUpload = !!m.canUpload;
     this.showEditDialog = true;
   }
@@ -193,7 +200,7 @@ export class ProjectDetailComponent implements OnInit {
     const id = this.route.snapshot.paramMap.get('id');
     if (!id || !this.editTarget) { return; }
     this.projectService.updateMember(id, this.editTarget.userId, {
-      roleOnProject: this.editRole,
+      projectRole: this.editRole,
       canUpload: this.editCanUpload
     }).subscribe({
       next: () => {

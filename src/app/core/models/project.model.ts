@@ -1,6 +1,6 @@
 export type ProjectType = 'RESERVOIR' | 'RESEAU' | 'BRANCHEMENTS' | 'MIXTE' | 'AUTRE';
 
-export type ProjectRole = 'MANAGER' | 'MEMBER' | 'VIEWER';
+export type ProjectRole = 'ADMIN' | 'MANAGER' | 'ENGINEER' | 'VIEWER';
 
 export interface Project {
   id: string;
@@ -48,36 +48,58 @@ export interface ProjectUpdate {
   contractValue?: number | null;
 }
 
-/** Member of a project (detail page — next prompt). */
+/** Member of a project — MemberResponse: userId, fullName, email, projectRole, canUpload, createdAt. */
 export interface ProjectMember {
-  id: string;
   userId: string;
   fullName: string;
-  email?: string;
-  roleOnProject?: ProjectRole | string | null;
-  canUpload?: boolean;
-  addedAt?: string | null;
-}
-
-/** Auto-created by the backend on project creation. */
-export interface ProjectFolder {
-  id: string;
-  name: string;
-  code?: string | null;
+  email: string;
+  projectRole: ProjectRole | string;
+  canUpload: boolean;
   createdAt?: string | null;
 }
 
-/** POST /api/projects/{id}/members */
+/** Folder of a project — FolderResponse: id, projectId, parentId, code, name, sortOrder, createdAt. */
+export interface ProjectFolder {
+  id: string;
+  projectId: string | null;
+  parentId?: string | null;
+  code?: string | null;
+  name: string;
+  sortOrder?: number | null;
+  createdAt?: string | null;
+}
+
+/** POST /api/projects/{id}/members — body: { userId, projectRole, canUpload }. */
 export interface MemberCreate {
   userId: string;
-  roleOnProject?: ProjectRole | string | null;
+  projectRole?: ProjectRole | string | null;
   canUpload?: boolean;
 }
 
-/** PUT /api/projects/{id}/members/{userId} */
+/** PUT /api/projects/{id}/members/{userId} — body: { projectRole, canUpload }. */
 export interface MemberUpdate {
-  roleOnProject?: ProjectRole | string | null;
+  projectRole?: ProjectRole | string | null;
   canUpload?: boolean;
+}
+
+/**
+ * GET /api/projects/{id}/me — the current user's membership & rights on this
+ * project. Drives project-scoped UI gating (e.g. hide the upload button when
+ * canUpload is false). Backend returns the owner/admin as canUpload=true.
+ */
+export interface MyPermissions {
+  isMember: boolean;
+  projectRole: ProjectRole | string | null;
+  canUpload: boolean;
+}
+
+/** Map MyPermissionsResponse → MyPermissions (camelCase, with snake_case fallback). */
+export function mapMyPermissions(raw: any): MyPermissions {
+  return {
+    isMember: !!raw?.isMember,
+    projectRole: raw?.projectRole ?? raw?.project_role ?? null,
+    canUpload: !!raw?.canUpload
+  };
 }
 
 export const PROJECT_TYPE_OPTS: { label: string; value: ProjectType }[] = [
@@ -97,20 +119,22 @@ export const PROJECT_TYPE_LABELS: Record<string, string> = {
 };
 
 export const PROJECT_ROLE_OPTS: { label: string; value: ProjectRole }[] = [
-  { label: 'Responsable', value: 'MANAGER' },
-  { label: 'Membre', value: 'MEMBER' },
+  { label: 'Admin', value: 'ADMIN' },
+  { label: 'Chef de projet', value: 'MANAGER' },
+  { label: 'Ingénieur', value: 'ENGINEER' },
   { label: 'Observateur', value: 'VIEWER' }
 ];
 
 export const PROJECT_ROLE_LABELS: Record<string, string> = {
-  MANAGER: 'Responsable',
-  MEMBER: 'Membre',
+  ADMIN: 'Admin',
+  MANAGER: 'Chef de projet',
+  ENGINEER: 'Ingénieur',
   VIEWER: 'Observateur'
 };
 
 /**
- * Centralized backend → UI mapping. The backend is currently unreachable to
- * confirm exact JSON field names; if they differ, adjust ONLY here.
+ * Centralized backend → UI mapping. Accepts camelCase and snake_case
+ * variants to stay resilient to backend serialization differences.
  */
 export function mapProject(raw: any): Project {
   return {
@@ -118,15 +142,15 @@ export function mapProject(raw: any): Project {
     name: raw.name,
     code: raw.code ?? null,
     status: raw.status ?? 'ACTIF',
-    clientName: raw.clientName ?? null,
+    clientName: raw.clientName ?? raw.client_name ?? raw.client ?? null,
     location: raw.location ?? null,
     governorate: raw.governorate ?? null,
-    projectType: raw.projectType ?? null,
-    startDate: raw.startDate ?? null,
-    endDate: raw.endDate ?? null,
+    projectType: raw.projectType ?? raw.project_type ?? null,
+    startDate: raw.startDate ?? raw.start_date ?? null,
+    endDate: raw.endDate ?? raw.end_date ?? null,
     description: raw.description ?? null,
-    contractValue: raw.contractValue ?? null,
-    createdAt: raw.createdAt
+    contractValue: raw.contractValue ?? raw.contract_value ?? null,
+    createdAt: raw.createdAt ?? raw.created_at
   };
 }
 

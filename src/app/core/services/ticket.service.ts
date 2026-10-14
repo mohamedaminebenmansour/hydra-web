@@ -1,7 +1,9 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { Ticket, TicketFilter, TicketUpsert } from '@app/core/models/ticket.model';
+import { Observable, map } from 'rxjs';
+import {
+  Ticket, TicketDocument, TicketFilter, TicketUpsert, mapTicket, mapTicketDocument
+} from '@app/core/models/ticket.model';
 
 @Injectable({ providedIn: 'root' })
 export class TicketService {
@@ -14,37 +16,42 @@ export class TicketService {
     if (filter.status) { params = params.set('status', filter.status); }
     if (filter.priority) { params = params.set('priority', filter.priority); }
     if (filter.mine) { params = params.set('mine', 'true'); }
-    return this.http.get<Ticket[]>('/api/tickets', { params });
+    return this.http.get<any[]>('/api/tickets', { params }).pipe(
+      map(list => (list ?? []).map(mapTicket))
+    );
+  }
+
+  /** GET /api/tickets/{id} */
+  get(id: string): Observable<Ticket> {
+    return this.http.get<any>(`/api/tickets/${id}`).pipe(map(mapTicket));
   }
 
   /** POST /api/tickets */
   create(body: TicketUpsert): Observable<Ticket> {
-    return this.http.post<Ticket>('/api/tickets', this.normalize(body));
+    return this.http.post<any>('/api/tickets', this.normalize(body)).pipe(map(mapTicket));
   }
 
   /** PUT /api/tickets/{id} */
   update(id: string, body: TicketUpsert): Observable<Ticket> {
-    return this.http.put<Ticket>(`/api/tickets/${id}`, this.normalize(body));
+    return this.http.put<any>(`/api/tickets/${id}`, this.normalize(body)).pipe(map(mapTicket));
   }
 
-  /** POST /api/tickets/{id}/start */
-  start(id: string): Observable<Ticket> {
-    return this.http.post<Ticket>(`/api/tickets/${id}/start`, {});
+  /** POST /api/tickets/{id}/status?status=XX — move along the workflow. */
+  setStatus(id: string, status: string): Observable<Ticket> {
+    const params = new HttpParams().set('status', status);
+    return this.http.post<any>(`/api/tickets/${id}/status`, null, { params }).pipe(map(mapTicket));
   }
 
-  /** POST /api/tickets/{id}/wait */
-  wait(id: string): Observable<Ticket> {
-    return this.http.post<Ticket>(`/api/tickets/${id}/wait`, {});
+  /** GET /api/tickets/{id}/transitions — allowed next statuses. */
+  transitions(id: string): Observable<string[]> {
+    return this.http.get<string[]>(`/api/tickets/${id}/transitions`);
   }
 
-  /** POST /api/tickets/{id}/resume */
-  resume(id: string): Observable<Ticket> {
-    return this.http.post<Ticket>(`/api/tickets/${id}/resume`, {});
-  }
-
-  /** POST /api/tickets/{id}/close */
-  close(id: string): Observable<Ticket> {
-    return this.http.post<Ticket>(`/api/tickets/${id}/close`, {});
+  /** GET /api/tickets/{id}/documents — documents linked to this ticket. */
+  documents(id: string): Observable<TicketDocument[]> {
+    return this.http.get<any[]>(`/api/tickets/${id}/documents`).pipe(
+      map(list => (list ?? []).map(mapTicketDocument))
+    );
   }
 
   /** Backend expects yyyy-MM-dd date strings, not full ISO datetimes. */
