@@ -35,15 +35,15 @@
                 </span>
                 <div class="fa-perms">
                   <span class="fa-perm">Lire</span>
-                  <p-toggleswitch [ngModel]="true" [disabled]="true" [title]="'Lecture toujours activée'" />
+                  <p-toggleswitch [ngModel]="rolePermsFor(code)[0]" (ngModelChange)="setRolePerm(code, 0, $event)" [disabled]="true" [title]="'Lecture toujours activée'" />
                   <span class="fa-perm">Télécharger</span>
-                  <p-toggleswitch [ngModel]="rolePermsFor(code)[2]" (ngModelChange)="toggleRolePerm(code, 2)" [disabled]="roleBlocked(code)" />
+                  <p-toggleswitch [ngModel]="rolePermsFor(code)[2]" (ngModelChange)="setRolePerm(code, 2, $event)" [disabled]="roleBlocked(code)" />
                   <span class="fa-perm">Téléverser</span>
-                  <p-toggleswitch [ngModel]="rolePermsFor(code)[1]" (ngModelChange)="toggleRolePerm(code, 1)" [disabled]="roleBlocked(code)" />
+                  <p-toggleswitch [ngModel]="rolePermsFor(code)[1]" (ngModelChange)="setRolePerm(code, 1, $event)" [disabled]="roleBlocked(code)" />
                   <span class="fa-perm">Approuver</span>
-                  <p-toggleswitch [ngModel]="rolePermsFor(code)[3]" (ngModelChange)="toggleRolePerm(code, 3)" [disabled]="roleBlocked(code)" />
+                  <p-toggleswitch [ngModel]="rolePermsFor(code)[3]" (ngModelChange)="setRolePerm(code, 3, $event)" [disabled]="roleBlocked(code)" />
                   <span class="fa-perm">Supprimer</span>
-                  <p-toggleswitch [ngModel]="rolePermsFor(code)[4]" (ngModelChange)="toggleRolePerm(code, 4)" [disabled]="roleBlocked(code)" />
+                  <p-toggleswitch [ngModel]="rolePermsFor(code)[4]" (ngModelChange)="setRolePerm(code, 4, $event)" [disabled]="roleBlocked(code)" />
                 </div>
               </div>
             }
@@ -59,7 +59,7 @@
           <div class="fa-field">
             <label>Rechercher un utilisateur de l'organisation</label>
             <input pInputText class="fa-input" placeholder="Nom ou email"
-                   [ngModel]="searchText()" (ngModelChange)="searchText.set($event)"
+                   [ngModel]="searchText()" (ngModelChange)="searchText.set($event ?? '')"
                    (input)="searchUsers()" />
           </div>
           <div class="fa-user-list">

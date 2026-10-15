@@ -100,19 +100,15 @@
                   <div class="ftop">
                     <i class="pi pi-folder ficon"></i>
                     <span class="fname">{{ f.name }}</span>
-                  </div>
-                  <div class="fbadges">
-                    <p-badge [value]="badgeCount(f.id)" size="small" [style]="{'font-size':'11px'}"
-                             [styleClass]="'roles-badge'"
-                             [pTooltip]="badgeCount(f.id) + ' rôle(s) avec accès'"
-                             tooltipPosition="top" />
-                    <p-tag value="Créé automatiquement" severity="secondary" />
                     @if (canConfigureProject()) {
                       <p-button icon="pi pi-lock" [rounded]="true" [text]="true"
-                                label="Configurer l'accès"
                                 (click)="openAccess(f); $event.stopPropagation()"
-                                pTooltip="Gérer les droits d'accès à ce dossier" tooltipPosition="top" />
+                                pTooltip="Configurer les accès" />
                     }
+                  </div>
+                  <div class="fmeta">
+                    @if (f.code) { <span class="fcode">{{ f.code }}</span> }
+                    <p-badge [value]="badgeCount(f.id) + ' accès'" />
                   </div>
                 </div>
               }
@@ -205,9 +201,3 @@
   [folder]="accessFolder"
   (saved)="onAccessSaved()">
 </app-folder-access-dialog>
-
-
-<app-folder-access-dialog [visible]="showAccessDialog"
-                          [projectId]="projectId ?? ''"
-                          [folder]="accessFolder!"
-                          (saved)="onAccessSaved()" />

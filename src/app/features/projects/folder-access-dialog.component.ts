@@ -67,8 +67,8 @@ export class FolderAccessDialogComponent {
     return this.access().some(g => g.userId == null && g.roleCode === code) ? 'Activé' : 'Créer';
   }
   rolePermsFor(code: string): boolean[] { return this.rolePerms()[code] ?? [...D]; }
-  toggleRolePerm(code: string, idx: number): void {
-    this.rolePerms.update(prev => { const next = [...(prev[code] ?? [...D])]; next[idx] = !next[idx]; if (idx !== 0 && (next[1] || next[2] || next[3] || next[4])) { next[0] = true; } return { ...prev, [code]: next }; });
+  setRolePerm(code: string, idx: number, value: boolean): void {
+    this.rolePerms.update(prev => { const next = [...(prev[code] ?? [...D])]; next[idx] = !!value; if (idx !== 0 && (next[1] || next[2] || next[3] || next[4])) { next[0] = true; } return { ...prev, [code]: next }; });
   }
   isFinanceFolder(): boolean { return !!(this.folder?.code ?? '').startsWith('06'); }
   roleBlocked(code: string): boolean { if (!this.isFinanceFolder()) { return false; } return code === 'SOUS_TRAITANT' || code === 'CHEF_CHANTIER' || code === 'CONDUCTEUR'; }
