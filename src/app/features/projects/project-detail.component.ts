@@ -2,6 +2,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { forkJoin, of } from 'rxjs';
+import { catchError, first, map } from 'rxjs/operators';
 import { InputTextModule } from 'primeng/inputtext';
 import { SelectModule } from 'primeng/select';
 import { ToggleSwitchModule } from 'primeng/toggleswitch';
@@ -9,11 +11,13 @@ import { TabsModule } from 'primeng/tabs';
 import { DialogModule } from 'primeng/dialog';
 import { TagModule } from 'primeng/tag';
 import { ChipModule } from 'primeng/chip';
+import { BadgeModule } from 'primeng/badge';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '@app/core/auth.service';
 import { PERM } from '@app/core/permissions';
 import { ProjectService } from '@app/core/services/project.service';
+import { FolderAccessService } from '@app/core/services/folder-access.service';
 import { UserService } from '@app/core/services/user.service';
 import {
   Project, ProjectFolder, ProjectMember, ProjectRole,
@@ -21,6 +25,7 @@ import {
 } from '@app/core/models/project.model';
 import { UserOptionDto } from '@app/core/models/user.model';
 import { EmptyStateComponent } from '@app/shared/empty-state.component';
+import { FolderAccessDialogComponent } from './folder-access-dialog.component';
 
 @Component({
   selector: 'app-project-detail',
@@ -35,14 +40,17 @@ import { EmptyStateComponent } from '@app/shared/empty-state.component';
     DialogModule,
     TagModule,
     ChipModule,
+    BadgeModule,
     TooltipModule,
-    EmptyStateComponent
+    EmptyStateComponent,
+    FolderAccessDialogComponent
   ],
   templateUrl: './project-detail.component.html',
   styleUrl: './project-detail.component.scss'
 })
 export class ProjectDetailComponent implements OnInit {
   private projectService = inject(ProjectService);
+  private folderAccessService = inject(FolderAccessService);
   private userService = inject(UserService);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -52,6 +60,7 @@ export class ProjectDetailComponent implements OnInit {
   project = signal<Project | null>(null);
   members = signal<ProjectMember[]>([]);
   folders = signal<ProjectFolder[]>([]);
+  folderAccessCounts = signal<Record<string, number>>({});
   users = signal<UserOptionDto[]>([]);
 
   loading = signal(true);
@@ -78,7 +87,14 @@ export class ProjectDetailComponent implements OnInit {
   showRemoveDialog = false;
   removeTarget: ProjectMember | null = null;
 
+  // folder access dialog
+  showAccessDialog = false;
+  accessFolder: ProjectFolder | null = null;
+
   canManage = computed(() => this.auth.can(PERM.PROJECT_ASSIGN) || this.auth.can(PERM.PROJECT_WRITE));
+
+  // Configurer l'accès aux dossiers : visible pour ADMIN / OWNER (PROJECT_ASSIGN/PROJECT_MANAGE)
+  canConfigureProject = computed(() => this.auth.can(PERM.PROJECT_ASSIGN) || this.auth.can(PERM.PROJECT_MANAGE));
 
   // Users not yet on this project, shaped for the picker list.
   availableUserOpts = computed(() => {
@@ -111,7 +127,10 @@ export class ProjectDetailComponent implements OnInit {
     });
 
     this.projectService.listFolders(id).subscribe({
-      next: list => this.folders.set(list ?? []),
+      next: list => {
+        this.folders.set(list ?? []);
+        this.loadFolderAccessCounts();
+      },
       error: () => this.folders.set([])
     });
 
@@ -242,4 +261,37 @@ export class ProjectDetailComponent implements OnInit {
       error: () => { /* keep current list */ }
     });
   }
+
+  private loadFolderAccessCounts(): void {
+    const projectId = this.projectId;
+    if (!projectId) return;
+    const folderIds = this.folders().map(f => f.id).filter(Boolean);
+    if (!folderIds.length) return;
+    forkJoin(folderIds.map(fid =>
+      this.folderAccessService.list(projectId, fid).pipe(
+        map(accs => ({ fid, count: accs.filter(a => a.userId == null).length })),
+        catchError(() => of({ fid, count: 0 }))
+      )
+    )).subscribe(results => {
+      const counts: Record<string, number> = {};
+      results.forEach(r => counts[r.fid] = r.count);
+      this.folderAccessCounts.set(counts);
+    });
+  }
+
+  badgeCount(folderId: string): number {
+    return this.folderAccessCounts()[folderId] ?? 0;
+  }
+
+  openAccess(folder: ProjectFolder): void {
+    this.accessFolder = folder;
+    this.showAccessDialog = true;
+  }
+
+  onAccessSaved(): void {
+    this.showAccessDialog = false;
+    this.accessFolder = null;
+    this.loadFolderAccessCounts();
+  }
+
 }

@@ -1,0 +1,1 @@
+with open('folder-access-dialog.component.ts') as f: s=f.read(); old="import { Component, inject, input, output, signal, viewChild } from '@angular/core';"; new="import { Component, inject, input, output, signal, viewChild, ElementRef } from '@angular/core';"; if old in s: s=s.replace(old,new); open('folder-access-dialog.component.ts','w').write(s); print('ok'); else: print('no')

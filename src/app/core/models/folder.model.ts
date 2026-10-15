@@ -26,3 +26,76 @@ export function mapFolder(raw: any): Folder {
     createdAt: raw?.createdAt ?? null
   };
 }
+
+/** Folder access grant returned by GET /access. */
+export interface FolderAccess {
+  id: string;
+  projectId: string;
+  folderId: string;
+  userId: string | null;
+  roleCode: string | null;
+  canRead: boolean;
+  canUpload: boolean;
+  canDownload: boolean;
+  canApprove: boolean;
+  canDelete: boolean;
+}
+
+/** Payload sent to POST /api/projects/{id}/folders/{folderId}/access */
+export interface FolderAccessGrant {
+  id?: string;
+  userId?: string | null;
+  roleCode?: string | null;
+  canRead?: boolean;
+  canUpload?: boolean;
+  canDownload?: boolean;
+  canApprove?: boolean;
+  canDelete?: boolean;
+}
+
+/** Static company role catalog used by the folder ACL UI. */
+export const COMPANY_ROLE_OPTS = [
+  'OWNER',
+  'DIRECTION',
+  'CHEF_PROJET',
+  'DOC_CTRL',
+  'INGENIEER',
+  'CONDUCTEUR',
+  'QA',
+  'CHEF_CHANTIER',
+  'FINANCE',
+  'ACHAT',
+  'HSE',
+  'SOUS_TRAITANT'
+] as const;
+
+/** Static French labels for role codes (fallback when backend labels missing). */
+export const COMPANY_ROLE_LABELS: Record<string, string> = {
+  OWNER: 'Propriétaire de l\'organisation',
+  DIRECTION: 'Direction',
+  CHEF_PROJET: 'Chef de projet',
+  DOC_CTRL: 'Contrôleur de documents',
+  INGENIEER: 'Ingénieur',
+  CONDUCTEUR: 'Conducteur',
+  QA: 'Qualité',
+  CHEF_CHANTIER: 'Chef de chantier',
+  FINANCE: 'Finance',
+  ACHAT: 'Achat',
+  HSE: 'Hygiène Sécurité Environnement',
+  SOUS_TRAITANT: 'Sous-traitant'
+};
+
+export function mapFolderAccess(raw: any): FolderAccess {
+  return {
+    id: raw?.id ?? '',
+    projectId: raw?.projectId ?? '',
+    folderId: raw?.folderId ?? '',
+    userId: raw?.userId ?? null,
+    roleCode: raw?.roleCode ?? null,
+    canRead: !!raw?.canRead,
+    canUpload: !!raw?.canUpload,
+    canDownload: !!raw?.canDownload,
+    canApprove: !!raw?.canApprove,
+    canDelete: !!raw?.canDelete
+  };
+}

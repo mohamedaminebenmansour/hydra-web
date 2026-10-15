@@ -101,11 +101,18 @@
                     <i class="pi pi-folder ficon"></i>
                     <span class="fname">{{ f.name }}</span>
                   </div>
-                  <p-tag value="Créé automatiquement" severity="secondary" />
                   <div class="fbadges">
-                    <p-tag value="Hérite projet" severity="info" icon="pi pi-shield" />
-                    <p-button icon="pi pi-lock" [rounded]="true" [text]="true" [disabled]="true"
-                              pTooltip="Bientôt : droits par dossier" tooltipPosition="top" />
+                    <p-badge [value]="badgeCount(f.id)" size="small" [style]="{'font-size':'11px'}"
+                             [styleClass]="'roles-badge'"
+                             [pTooltip]="badgeCount(f.id) + ' rôle(s) avec accès'"
+                             tooltipPosition="top" />
+                    <p-tag value="Créé automatiquement" severity="secondary" />
+                    @if (canConfigureProject()) {
+                      <p-button icon="pi pi-lock" [rounded]="true" [text]="true"
+                                label="Configurer l'accès"
+                                (click)="openAccess(f); $event.stopPropagation()"
+                                pTooltip="Gérer les droits d'accès à ce dossier" tooltipPosition="top" />
+                    }
                   </div>
                 </div>
               }
@@ -191,3 +198,8 @@
     <p-button label="Retirer" icon="pi pi-trash" severity="danger" (onClick)="doRemove()" />
   </ng-template>
 </p-dialog>
+
+<app-folder-access-dialog [visible]="showAccessDialog"
+                          [projectId]="projectId ?? ''"
+                          [folder]="accessFolder!"
+                          (saved)="onAccessSaved()" />

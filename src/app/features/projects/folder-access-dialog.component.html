@@ -1,0 +1,94 @@
+<p-dialog [(visible)]="visible" [modal]="true" [style]="{ width: '92vw', 'max-width': '720px' }"
+          [header]="folder ? ('Accès au dossier ' + folder.name) : ''"
+          [draggable]="false" [closable]="true">
+  <div class="acc-panel">
+    <div class="acc-loading" *ngIf="loading() && !saveError()">
+      <i class="pi pi-spin pi-spinner"></i> Chargement des accès…
+    </div>
+    <div class="acc-error" *ngIf="saveError()">{{ saveError() }}</div>
+
+    <div *ngIf="!loading()" class="acc-sections">
+      <!-- Section A: accès par rôle -->
+      <div class="acc-section">
+        <div class="acc-section-head">
+          <h3 class="acc-section-title">Accès par rôle</h3>
+          <p-chip [label]="roleConfigs().length + ' rôles'" severity="info" icon="pi pi-users" />
+        </div>
+
+        <div class="acc-role-list">
+          @for (cfg of roleConfigs(); track cfg.code) {
+            <div class="acc-role-row">
+              <span class="acc-role-label">{{ roleLabel(cfg.code) }}</span>
+              <div class="acc-perms">
+                <span class="perm-chip" [class.on]="cfg.perms[0]" title="Lire">L</span>
+                <span class="perm-chip" [class.on]="cfg.perms[1]" title="Télécharger">T</span>
+                <span class="perm-chip" [class.on]="cfg.perms[2]" title="Téléverser">U</span>
+                <span class="perm-chip" [class.on]="cfg.perms[3]" title="Approuver">A</span>
+                <span class="perm-chip" [class.on]="cfg.perms[4]" title="Supprimer">D</span>
+              </div>
+              <div class="acc-perm-toggles">
+                <p-toggleswitch [(ngModel)]="cfg.perms[0]" [disabled]="true" />
+                <span class="perm-label">Lire</span>
+                <p-toggleswitch [(ngModel)]="cfg.perms[2]" />
+                <span class="perm-label">Télécharger</span>
+                <p-toggleswitch [(ngModel)]="cfg.perms[1]" />
+                <span class="perm-label">Téléverser</span>
+                <p-toggleswitch [(ngModel)]="cfg.perms[3]" />
+                <span class="perm-label">Approuver</span>
+                <p-toggleswitch [(ngModel)]="cfg.perms[4]" />
+                <span class="perm-label">Supprimer</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="acc-hint">
+          <i class="pi pi-info-circle"></i>
+          La lecture est toujours accordée (un rôle sans lecture est invisible).
+        </div>
+      </div>
+
+      <!-- Section B: accès par personne -->
+      <div class="acc-section">
+        <div class="acc-section-head">
+          <h3 class="acc-section-title">Accès par personne</h3>
+          <p-chip [label]="users().length + ' personnes'" severity="info" icon="pi pi-user" />
+        </div>
+
+        <div class="field">
+          <label>Rechercher un utilisateur de l'organisation</label>
+          <input pInputText class="inp" placeholder="Nom ou email" [(ngModel)]="searchText"
+                 #searchField />
+        </div>
+
+        <div class="user-results">
+          @for (u of filteredUsers(); track u.id) {
+            <div class="user-row"
+                 [class.selected]="selectedUserIds().includes(u.id)"
+                 (click)="toggleUser(u.id)">
+              <div class="u-left">{{ u.fullName }}
+                @if (u.email && u.email !== u.fullName) { <span class="u-email">{{ u.email }}</span> }
+              </div>
+              <span class="u-badge" [class.selected]="selectedUserIds().includes(u.id)">
+                {{ selectedUserIds().includes(u.id) ? '×' : '+' }}
+              </span>
+            </div>
+          } @empty {
+            <div class="user-empty">Aucun utilisateur disponible</div>
+          }
+        </div>
+      </div>
+    </div>
+
+    <!-- Finance warning -->
+    <div *ngIf="financeWarning" class="acc-warn">
+      <i class="pi pi-warning-circle"></i> {{ financeWarning }}
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Fermer" [text]="true" (onClick)="visible = false" [disabled]="loading()" />
+    <p-button label="Enregistrer" icon="pi pi-check" (onClick)="save()"
+              [disabled]="loading()" severity="primary" />
+  </ng-template>
+</p-dialog>
