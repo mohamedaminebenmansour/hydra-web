@@ -30,8 +30,8 @@ export function mapFolder(raw: any): Folder {
 /** Folder access grant returned by GET /access. */
 export interface FolderAccess {
   id: string;
-  projectId: string;
-  folderId: string;
+  projectId?: string;
+  folderId?: string;
   userId: string | null;
   roleCode: string | null;
   canRead: boolean;
@@ -39,6 +39,8 @@ export interface FolderAccess {
   canDownload: boolean;
   canApprove: boolean;
   canDelete: boolean;
+  userName?: string | null;
+  roleLabel?: string | null;
 }
 
 /** Payload sent to POST /api/projects/{id}/folders/{folderId}/access */
@@ -55,33 +57,23 @@ export interface FolderAccessGrant {
 
 /** Static company role catalog used by the folder ACL UI. */
 export const COMPANY_ROLE_OPTS = [
-  'OWNER',
-  'DIRECTION',
-  'CHEF_PROJET',
-  'DOC_CTRL',
-  'INGENIEER',
-  'CONDUCTEUR',
-  'QA',
-  'CHEF_CHANTIER',
-  'FINANCE',
-  'ACHAT',
-  'HSE',
-  'SOUS_TRAITANT'
+  'OWNER', 'DIRECTION', 'CHEF_PROJET', 'DOC_CTRL', 'INGENIEUR', 'CONDUCTEUR',
+  'QA', 'CHEF_CHANTIER', 'FINANCE', 'ACHAT', 'HSE', 'SOUS_TRAITANT'
 ] as const;
 
 /** Static French labels for role codes (fallback when backend labels missing). */
 export const COMPANY_ROLE_LABELS: Record<string, string> = {
-  OWNER: 'Propriétaire de l\'organisation',
+  OWNER: 'Propriétaire',
   DIRECTION: 'Direction',
   CHEF_PROJET: 'Chef de projet',
-  DOC_CTRL: 'Contrôleur de documents',
-  INGENIEER: 'Ingénieur',
-  CONDUCTEUR: 'Conducteur',
+  DOC_CTRL: 'Contrôle documentaire',
+  INGENIEUR: 'Ingénieur',
+  CONDUCTEUR: 'Conducteur de travaux',
   QA: 'Qualité',
   CHEF_CHANTIER: 'Chef de chantier',
   FINANCE: 'Finance',
-  ACHAT: 'Achat',
-  HSE: 'Hygiène Sécurité Environnement',
+  ACHAT: 'Achats',
+  HSE: 'HSE',
   SOUS_TRAITANT: 'Sous-traitant'
 };
 
@@ -96,6 +88,8 @@ export function mapFolderAccess(raw: any): FolderAccess {
     canUpload: !!raw?.canUpload,
     canDownload: !!raw?.canDownload,
     canApprove: !!raw?.canApprove,
-    canDelete: !!raw?.canDelete
+    canDelete: !!raw?.canDelete,
+    userName: raw?.userName ?? null,
+    roleLabel: raw?.roleLabel ?? null
   };
 }

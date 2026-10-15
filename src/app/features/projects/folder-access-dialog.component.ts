@@ -1,15 +1,15 @@
-import { Component, inject, input, output, signal, viewChild, ElementRef, Input } from '@angular/core';
+import { Component, inject, Input, Output, signal, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of, Observable } from 'rxjs';
-import { catchError, first, map } from 'rxjs/operators';
+import { forkJoin, of } from 'rxjs';
+import { catchError, first } from 'rxjs/operators';
 
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
-import { ToggleButtonModule } from 'primeng/togglebutton';
+import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ChipModule } from 'primeng/chip';
 import { BadgeModule } from 'primeng/badge';
 
@@ -18,326 +18,89 @@ import { UserOptionDto } from '@app/core/models/user.model';
 import { UserService } from '@app/core/services/user.service';
 import { FolderAccessService } from '@app/core/services/folder-access.service';
 
-import { COMPANY_ROLE_OPTS, FolderAccess, FolderAccessGrant } from '@app/core/models/folder.model';
+import { COMPANY_ROLE_OPTS, COMPANY_ROLE_LABELS, FolderAccess, FolderAccessGrant } from '@app/core/models/folder.model';
 
-type PermIndex = 0 | 1 | 2 | 3 | 4; // read, upload, download, approve, delete
-type RolePerms = Record<string, boolean[]>;
-
-function roleCatalog(code: string): string {
-  const cat: Record<string, string> = {
-    OWNER: 'Propriétaire de l\'organisation',
-    DIRECTION: 'Direction',
-    CHEF_PROJET: 'Chef de projet',
-    DOC_CTRL: 'Contrôleur de documents',
-    INGENIEER: 'Ingénieur',
-    CONDUCTEUR: 'Conducteur',
-    QA: 'Qualité',
-    CHEF_CHANTIER: 'Chef de chantier',
-    FINANCE: 'Finance',
-    ACHAT: 'Achat',
-    HSE: 'Hygiène Sécurité Environnement',
-    SOUS_TRAITANT: 'Sous-traitant'
-  };
-  return cat[code] ?? code;
-}
+const D = [true, false, false, false, false];
 
 @Component({
   selector: 'app-folder-access-dialog',
   standalone: true,
-  imports: [
-    CommonModule,
-    FormsModule,
-    DialogModule,
-    InputTextModule,
-    ButtonModule,
-    TagModule,
-    TooltipModule,
-    ToggleButtonModule,
-    ChipModule,
-    BadgeModule
-  ],
+  imports: [CommonModule, FormsModule, DialogModule, InputTextModule, ButtonModule, TagModule, TooltipModule, ToggleSwitchModule, ChipModule, BadgeModule],
   templateUrl: './folder-access-dialog.component.html',
   styleUrl: './folder-access-dialog.component.scss'
 })
 export class FolderAccessDialogComponent {
-  private readonly folderAccessService = inject(FolderAccessService);
-  private readonly userService = inject(UserService);
-
-  readonly saved = output<string>();
-
-  @Input() set visible(value: boolean) {
-    this._visible.set(value);
-    if (!value) {
-      this._justClosed.set(true);
-      this.loading.set(true);
-      this.saveError.set(null);
-      this.resetTemp();
-      this.fetchAll();
-    }
-  }
-  get visible(): boolean {
-    return this._visible();
-  }
-
+  readonly roleOpts = COMPANY_ROLE_OPTS;
+  private readonly fa = inject(FolderAccessService);
+  private readonly us = inject(UserService);
+  @Output() saved = new EventEmitter<string>();
+  @Output() visibleChange = new EventEmitter<boolean>();
+  @Input() visible = false;
   @Input() projectId = '';
   @Input() folder!: Folder;
-
-  private readonly _visible = signal(false);
-  private readonly _justClosed = signal(false);
-
   readonly loading = signal(false);
   readonly saveError = signal<string | null>(null);
-
   readonly access = signal<FolderAccess[]>([]);
   readonly users = signal<UserOptionDto[]>([]);
   readonly userResults = signal<UserOptionDto[]>([]);
   readonly searchText = signal('');
   readonly selectedUserIds = signal<string[]>([]);
+  readonly rolePerms = signal<Record<string, boolean[]>>({});
 
-  readonly rolePerms = signal<RolePerms>({});
-  readonly roleLabels = signal<Record<string, string>>({});
-  readonly roleConfigs = signal<
-    { code: string; label: string; perms: boolean[] }[]
-  >([]);
-
-  private readonly AUTO_DEFAULT_PERMISSIONS = [true, false, false, false, false] as const;
-
-  private readonly el = viewChild<ElementRef>('searchField');
-
-  constructor() {
-    if (this.folder) {
-      this.loadAccess();
-      this.fetchUsersAndRoles();
-    }
-  }
-
-  private fetchAll(): void {
-    this.loadAccess();
-    this.fetchUsersAndRoles();
-  }
-
+  ngOnInit(): void { if (this.folder) { this.loadAccess(); this.fetchUsers(); } }
   private loadAccess(): void {
-    if (!this.folder) return;
-    this.folderAccessService
-      .list(this.projectId, this.folder.id)
-      .pipe(first())
-      .subscribe(g => this.access.set(g ?? []));
-  }
-
-  private fetchUsersAndRoles(): void {
+    if (!this.folder) { return; }
     this.loading.set(true);
-    forkJoin({
-      users: this.userService.options(),
-      roles: (this.userService.roleOptions(this.projectId).pipe(
-        catchError(() => of<any[]>([]))
-      ) as Observable<any[]>)
-    })
-      .pipe(first())
-      .subscribe({
-        next: ({ users, roles }) => {
-          this.users.set(users ?? []);
-          const labels = new Map<string, string>();
-          (roles ?? []).forEach((r: { code: string; label: string }) =>
-            labels.set(r.code, r.label)
-          );
-          this.roleLabels.set(Object.fromEntries(labels));
-          this.updateRoleConfigs();
-          this.loading.set(false);
-        },
-        error: () => {
-          this.loading.set(false);
-          this.updateRoleConfigs();
-        }
-      });
-  }
-
-  private updateRoleConfigs(): void {
-    const merged = new Map<string, string>();
-    COMPANY_ROLE_OPTS.forEach(c => merged.set(c, c));
-    Object.entries(this.roleLabels()).forEach(([code, label]) =>
-      merged.set(code, label)
-    );
-    const entries = Array.from(merged.entries()).map(([code, label]) => ({
-      code,
-      label,
-      perms: this.rolePerms()[code] ?? ([...this.AUTO_DEFAULT_PERMISSIONS] as boolean[])
-    }));
-    this.roleConfigs.set(entries);
-  }
-
-  toggleRolePerm(code: string, idx: PermIndex): void {
-    this.rolePerms.update(prev => {
-      const perms = [...(prev[code] ?? [...this.AUTO_DEFAULT_PERMISSIONS])];
-      perms[idx] = !perms[idx];
-      return { ...prev, [code]: perms };
+    this.fa.list(this.projectId, this.folder.id).pipe(first()).subscribe({
+      next: g => { this.access.set(g ?? []); this.hydrate(); this.loading.set(false); },
+      error: () => { this.access.set([]); this.loading.set(false); }
     });
-    this.updateRoleConfigs();
   }
-
-  toggleRoleRead(code: string): void {
-    // Lecture implicite : pas de toggle
+  private fetchUsers(): void { this.us.options().pipe(first()).subscribe({ next: l => this.users.set(l ?? []), error: () => this.users.set([]) }); }
+  private hydrate(): void {
+    const p: Record<string, boolean[]> = {};
+    for (const g of this.access()) { if (g.userId == null && g.roleCode) { p[g.roleCode] = [g.canRead, g.canUpload, g.canDownload, g.canApprove, g.canDelete]; } }
+    this.rolePerms.set(p);
   }
-
-  hasRoleGrant(code: string): boolean {
-    return this.access().some(a => a.userId == null && a.roleCode === code);
+  roleLabel(code: string): string { return COMPANY_ROLE_LABELS[code] ?? code; }
+  roleBadgeLabel(code: string): string {
+    return this.access().some(g => g.userId == null && g.roleCode === code) ? 'Activé' : 'Créer';
   }
-
-  hasUserGrant(userId: string): boolean {
-    return this.access().some(a => a.userId === userId);
+  rolePermsFor(code: string): boolean[] { return this.rolePerms()[code] ?? [...D]; }
+  toggleRolePerm(code: string, idx: number): void {
+    this.rolePerms.update(prev => { const next = [...(prev[code] ?? [...D])]; next[idx] = !next[idx]; if (idx !== 0 && (next[1] || next[2] || next[3] || next[4])) { next[0] = true; } return { ...prev, [code]: next }; });
   }
-
-  private resetTemp(): void {
-    this.selectedUserIds.set([]);
-    this.rolePerms.set({});
-    this.searchText.set('');
-    this.userResults.set([]);
+  isFinanceFolder(): boolean { return !!(this.folder?.code ?? '').startsWith('06'); }
+  roleBlocked(code: string): boolean { if (!this.isFinanceFolder()) { return false; } return code === 'SOUS_TRAITANT' || code === 'CHEF_CHANTIER' || code === 'CONDUCTEUR'; }
+  financeWarning(): string | null {
+    if (!this.isFinanceFolder()) { return null; }
+    const has = this.access().some(a => a.userId == null && a.roleCode === 'SOUS_TRAITANT');
+    return has ? 'Le dossier Finance est verrouillé : les accès par sous-traitant sont interdits.' : null;
   }
-
+  openSearch(): void { this.userResults.set(this.users()); this.searchText.set(''); }
+  searchUsers(): void {
+    const q = this.searchText().trim().toLowerCase(); const list = this.users();
+    if (!q) { this.userResults.set(list); return; }
+    this.userResults.set(list.filter(u => (u.fullName ?? '').toLowerCase().includes(q) || (u.email ?? '').toLowerCase().includes(q)));
+  }
+  isSelected(userId: string): boolean { return this.selectedUserIds().includes(userId); }
+  toggleUser(userId: string): void { this.selectedUserIds.update(ids => ids.includes(userId) ? ids.filter(i => i !== userId) : [...ids, userId]); }
   save(): void {
-    if (!this.folder) return;
-    this.loading.set(true);
-    this.saveError.set(null);
-
+    if (!this.folder) { return; }
+    this.loading.set(true); this.saveError.set(null);
     const existing = new Map<string, FolderAccess>();
-    this.access().forEach(a => existing.set(this.keyOf(a), a));
-
-    const nextRole = new Map<string, boolean[]>();
-    const nextUser = new Set<string>();
-    this.roleConfigs().forEach(cfg => {
-      const perms = cfg.perms;
-      if (perms.some(p => p)) {
-        nextRole.set(cfg.code, perms);
-      }
+    for (const g of this.access()) { existing.set(g.userId != null ? `user:${g.userId}` : `role:${g.roleCode}`, g); }
+    const posts: any[] = []; const deletes: string[] = [];
+    for (const code of COMPANY_ROLE_OPTS) {
+      const p = this.rolePermsFor(code);
+      if (p.some(v => v)) { posts.push(this.fa.grant(this.projectId, this.folder.id, { roleCode: code, userId: null, canRead: true, canUpload: p[1], canDownload: p[2], canApprove: p[3], canDelete: p[4] })); }
+      else { const e = existing.get(`role:${code}`); if (e) { deletes.push(e.id); } }
+    }
+    for (const id of this.selectedUserIds()) { if (!existing.get(`user:${id}`)) { posts.push(this.fa.grant(this.projectId, this.folder.id, { userId: id, roleCode: null, canRead: true, canUpload: false, canDownload: false, canApprove: false, canDelete: false })); } }
+    for (const g of this.access()) { if (g.userId != null && !this.selectedUserIds().includes(g.userId)) { deletes.push(g.id); } }
+    forkJoin([...posts, ...deletes.map(id => this.fa.revoke(this.projectId, this.folder.id, id) as any)]).pipe(first(), catchError(() => of(null as any))).subscribe({
+      next: () => { this.loadAccess(); this.saved.emit(this.folder.id); },
+      error: () => { this.saveError.set('Échec de la sauvegarde des accès.'); this.loading.set(false); }
     });
-    this.selectedUserIds().forEach(id => nextUser.add(id));
-
-    const posts: any[] = [];
-    const deletes: string[] = [];
-
-    existing.forEach((grant, key) => {
-      const existingRole = grant.userId == null;
-      if (existingRole) {
-        const wanted = nextRole.get(grant.roleCode!);
-        if (wanted) {
-          const target = [...wanted];
-          while (target.length < 5) target.push(false);
-          if (target[0] !== grant.canRead) target[0] = true;
-          grant.canRead = target[0];
-          grant.canUpload = target[1];
-          grant.canDownload = target[2];
-          grant.canApprove = target[3];
-          grant.canDelete = target[4];
-          posts.push(this.folderAccessService.grant(this.projectId, this.folder.id, grant as FolderAccessGrant));
-        } else {
-          deletes.push(grant.id);
-        }
-      } else {
-        if (nextUser.has(grant.userId!)) {
-          posts.push(this.folderAccessService.grant(this.projectId, this.folder.id, grant as FolderAccessGrant));
-        } else {
-          deletes.push(grant.id);
-        }
-      }
-    });
-
-    nextRole.forEach((perms, code) => {
-      if (existing.has(this.keyOfRole(code))) {
-        const grant = existing.get(this.keyOfRole(code))!;
-        const target = [...perms];
-        while (target.length < 5) target.push(false);
-        if (target[0] !== grant.canRead) target[0] = true;
-        grant.canRead = target[0];
-        grant.canUpload = target[1];
-        grant.canDownload = target[2];
-        grant.canApprove = target[3];
-        grant.canDelete = target[4];
-        posts.push(this.folderAccessService.grant(this.projectId, this.folder.id, grant as FolderAccessGrant));
-      } else {
-        const base = [...perms];
-        while (base.length < 5) base.push(false);
-        base[0] = true;
-        posts.push(this.folderAccessService.grant(this.projectId, this.folder.id, {
-          roleCode: code,
-          userId: null,
-          canRead: true,
-          canUpload: base[1],
-          canDownload: base[2],
-          canApprove: base[3],
-          canDelete: base[4]
-        }));
-      }
-    });
-
-    nextUser.forEach(userId => {
-      if (!existing.has(userId)) {
-        posts.push(this.folderAccessService.grant(this.projectId, this.folder.id, {
-          userId,
-          roleCode: null,
-          canRead: true,
-          canUpload: false,
-          canDownload: false,
-          canApprove: false,
-          canDelete: false
-        }));
-      }
-    });
-
-    forkJoin([...posts, ...deletes.map(id =>
-      this.folderAccessService.revoke(this.projectId, this.folder.id, id)
-    )])
-      .pipe(first(), catchError(() => of(null)))
-      .subscribe({
-        next: () => {
-          this.loadAccess();
-          this.saved.emit(this.folder.id);
-          this.loading.set(false);
-        },
-        error: () => {
-          this.saveError.set('Échec de la sauvegarde des accès.');
-          this.loading.set(false);
-        }
-      });
-  }
-
-  private keyOf(grant: FolderAccess): string {
-    return grant.userId != null ? `user:${grant.userId}` : `role:${grant.roleCode}`;
-  }
-
-  private keyOfRole(code: string): string {
-    return `role:${code}`;
-  }
-
-  roleLabel(code: string): string {
-    return this.roleLabels()[code] ?? roleCatalog(code);
-  }
-
-  filteredUsers(): UserOptionDto[] {
-    const q = this.searchText().trim().toLowerCase();
-    const list = this.users();
-    if (!q) { return list; }
-    return list.filter(u =>
-      u.fullName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
-  }
-
-  toggleUser(userId: string): void {
-    this.selectedUserIds.update(ids =>
-      ids.includes(userId) ? ids.filter(i => i !== userId) : [...ids, userId]);
-  }
-
-  get canConfigure(): boolean {
-    return !!this.folder;
-  }
-
-  get isFinanceFolder(): boolean {
-    return !!(this.folder?.code ?? '').startsWith('06');
-  }
-
-  get financeWarning(): string | null {
-    if (!this.isFinanceFolder) return null;
-    const has =
-      this.access().some(a => a.userId == null && a.roleCode === 'SOUS_TRAITANT');
-    return has
-      ? "Le dossier Finance est verrouillé : les accès par sous-traitant sont interdits."
-      : null;
   }
 }

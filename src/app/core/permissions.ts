@@ -15,7 +15,8 @@ export const PERM = {
   DOCUMENT_UPLOAD: 'DOCUMENT_UPLOAD',
   DOCUMENT_DOWNLOAD: 'DOCUMENT_DOWNLOAD',
   DOCUMENT_DELETE: 'DOCUMENT_DELETE',
-  AUDIT_VIEW: 'AUDIT_VIEW'
+  AUDIT_VIEW: 'AUDIT_VIEW',
+  FOLDER_MANAGE: 'FOLDER_MANAGE'
 } as const;
 
 export const PERM_LABELS: Record<string, string> = {
@@ -35,7 +36,8 @@ export const PERM_LABELS: Record<string, string> = {
   AUDIT_VIEW: "Voir le rapport d'activité",
   TICKET_READ: 'Voir les tickets',
   TICKET_WRITE: 'Créer et fermer les tickets',
-  TICKET_ASSIGN: 'Assigner les tickets'
+  TICKET_ASSIGN: 'Assigner les tickets',
+  FOLDER_MANAGE: 'Configurer les accès aux dossiers'
 };
 
 export const PERM_GROUPS: { key: string; icon: string; title: string; ids: string[] }[] = [

@@ -199,6 +199,14 @@
   </ng-template>
 </p-dialog>
 
+<app-folder-access-dialog
+  [(visible)]="showAccessDialog"
+  [projectId]="projectId ?? ''"
+  [folder]="accessFolder"
+  (saved)="onAccessSaved()">
+</app-folder-access-dialog>
+
+
 <app-folder-access-dialog [visible]="showAccessDialog"
                           [projectId]="projectId ?? ''"
                           [folder]="accessFolder!"

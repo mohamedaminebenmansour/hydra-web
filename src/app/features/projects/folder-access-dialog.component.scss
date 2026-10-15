@@ -1,58 +1,62 @@
-.acc-panel { display: flex; flex-direction: column; gap: 14px; min-width: 260px; }
+.fa-panel { display: flex; flex-direction: column; gap: 14px; min-width: 260px; }
 
-.acc-loading { color: #64748b; padding: 24px; text-align: center; font-size: 14px; }
-.acc-loading i { margin-right: 8px; color: #0ea5e9; }
-.acc-error { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
+.fa-loading { color: #64748b; padding: 24px; text-align: center; font-size: 14px; }
+.fa-loading i { margin-right: 8px; color: #0ea5e9; }
+.fa-error { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
   padding: 10px 12px; font-size: 13px; margin-bottom: 6px; }
 
-.acc-sections { display: flex; flex-direction: column; gap: 14px; }
+.fa-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px;
+  padding: 10px 12px; font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
+.fa-warn i { margin-top: 2px; color: #d97706; }
 
-.acc-section { display: flex; flex-direction: column; gap: 10px; background: #fff;
+.fa-sections { display: flex; flex-direction: column; gap: 14px; }
+
+.fa-section { display: flex; flex-direction: column; gap: 10px; background: #fff;
   border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; }
-.acc-section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-.acc-section-title { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; }
+.fa-section-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.fa-section-title { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; }
+.fa-section-title i { color: #0ea5e9; }
 
-.acc-role-list { display: flex; flex-direction: column; gap: 8px; }
-.acc-role-row { display: flex; justify-content: space-between; align-items: center;
+.fa-role-list { display: flex; flex-direction: column; gap: 8px; }
+.fa-role-row { display: flex; justify-content: space-between; align-items: center;
   gap: 12px; padding: 8px 4px; border-bottom: 1px solid #f1f5f9; }
-.acc-role-row:last-child { border-bottom: none; }
-.acc-role-label { font-weight: 600; color: #334155; font-size: 14px; }
-.acc-perms { display: flex; gap: 6px; flex-shrink: 0; min-width: 90px; }
-.perm-chip { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px;
-  border-radius: 4px; font-size: 11px; font-weight: 700; border: 1px solid #cbd5e1; color: #64748b; }
-.perm-chip.on { background: #0ea5e9; color: #fff; border-color: #0ea5e9; }
-.acc-perm-toggles { display: flex; flex-wrap: wrap; gap: 8px 12px; flex-shrink: 0; }
-.acc-perm-toggles label { font-size: 12px; color: #475569; cursor: pointer; user-select: none; }
-.acc-perm-toggles .p-toggleswitch:disabled label { color: #94a3b8; cursor: not-allowed; }
-.perm-label { font-size: 12px; color: #475569; cursor: default; user-select: none; margin-left: 2px; }
-.acc-perm-toggles .p-toggleswitch:disabled + .perm-label { color: #94a3b8; }
+.fa-role-row:last-child { border-bottom: none; }
+.fa-role-label { font-weight: 600; color: #334155; font-size: 14px; }
+.fa-role-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
+  border: 1px solid #cbd5e1; color: #64748b; flex-shrink: 0; }
+.fa-role-chip.blocked { background: #fef3c7; color: #92400e; border-color: #fde68a; }
 
-.acc-hint { font-size: 12px; color: #64748b; margin-top: 4px; }
-.acc-hint i { color: #94a3b8; margin-right: 6px; }
+.fa-perms { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; flex-shrink: 0; }
+.fa-perm { font-size: 12px; color: #475569; user-select: none; }
+.fa-perms .p-toggleswitch { width: 44px; }
 
-.user-results { border: 1px solid #e2e8f0; border-radius: 8px; max-height: 220px; overflow-y: auto; }
-.user-row { display: flex; justify-content: space-between; align-items: center; gap: 8px;
+.fa-hint { font-size: 12px; color: #64748b; margin-top: 6px; }
+.fa-hint i { color: #94a3b8; margin-right: 6px; }
+
+.fa-field { display: flex; flex-direction: column; gap: 6px; }
+.fa-field label { font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; }
+.fa-input { width: 100%; font-size: 14px; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; }
+
+.fa-user-list { border: 1px solid #e2e8f0; border-radius: 8px; max-height: 220px; overflow-y: auto; }
+.fa-user-row { display: flex; justify-content: space-between; align-items: center; gap: 8px;
   padding: 8px 10px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
-.user-row:last-child { border-bottom: none; }
-.user-row:hover { background: #f8fafc; }
-.user-row.selected { background: #e0f2fe; }
-.u-left { font-size: 14px; color: #1e293b; }
-.u-left .u-email { display: block; font-size: 12px; color: #64748b; margin-top: 2px; }
-.u-badge { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center;
+.fa-user-row:last-child { border-bottom: none; }
+.fa-user-row:hover { background: #f8fafc; }
+.fa-user-row.selected { background: #e0f2fe; }
+.fa-user-row i { color: #94a3b8; flex-shrink: 0; }
+.fa-user-info { flex: 1; min-width: 0; }
+.fa-user-name { font-size: 14px; color: #1e293b; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fa-user-email { font-size: 12px; color: #64748b; margin-top: 2px; }
+.fa-user-badge { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center;
   justify-content: center; font-size: 12px; font-weight: 700; color: #fff;
   background: #cbd5e1; flex-shrink: 0; }
-.u-badge.selected { background: #0ea5e9; }
-.user-empty { padding: 14px; text-align: center; color: #64748b; font-size: 14px; }
-
-.acc-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px;
-  padding: 10px 12px; font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
-.acc-warn i { margin-top: 2px; color: #d97706; }
-
-.roles-badge { }
+.fa-user-badge.selected { background: #0ea5e9; }
+.fa-user-empty { padding: 14px; text-align: center; color: #64748b; font-size: 14px; }
 
 @media (max-width: 560px) {
   :host ::ng-deep .p-dialog { width: 96vw !important; }
-  .acc-role-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .acc-perms { min-width: auto; }
-  .acc-perm-toggles { width: 100%; }
+  .fa-perms { gap: 8px; }
+  .fa-perm { font-size: 11px; }
+  .fa-role-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .fa-perms { width: 100%; }
 }
