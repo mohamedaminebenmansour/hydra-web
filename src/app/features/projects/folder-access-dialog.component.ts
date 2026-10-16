@@ -37,7 +37,7 @@ export class FolderAccessDialogComponent {
   @Output() visibleChange = new EventEmitter<boolean>();
   @Input() visible = false;
   @Input() projectId = '';
-  @Input() folder!: Folder;
+  @Input() folder: Folder | null = null;
   readonly loading = signal(false);
   readonly saveError = signal<string | null>(null);
   readonly access = signal<FolderAccess[]>([]);
@@ -87,19 +87,20 @@ export class FolderAccessDialogComponent {
   toggleUser(userId: string): void { this.selectedUserIds.update(ids => ids.includes(userId) ? ids.filter(i => i !== userId) : [...ids, userId]); }
   save(): void {
     if (!this.folder) { return; }
+    const folder = this.folder;
     this.loading.set(true); this.saveError.set(null);
     const existing = new Map<string, FolderAccess>();
     for (const g of this.access()) { existing.set(g.userId != null ? `user:${g.userId}` : `role:${g.roleCode}`, g); }
     const posts: any[] = []; const deletes: string[] = [];
     for (const code of COMPANY_ROLE_OPTS) {
       const p = this.rolePermsFor(code);
-      if (p.some(v => v)) { posts.push(this.fa.grant(this.projectId, this.folder.id, { roleCode: code, userId: null, canRead: true, canUpload: p[1], canDownload: p[2], canApprove: p[3], canDelete: p[4] })); }
+      if (p.some(v => v)) { posts.push(this.fa.grant(this.projectId, folder.id, { roleCode: code, userId: null, canRead: true, canUpload: p[1], canDownload: p[2], canApprove: p[3], canDelete: p[4] })); }
       else { const e = existing.get(`role:${code}`); if (e) { deletes.push(e.id); } }
     }
-    for (const id of this.selectedUserIds()) { if (!existing.get(`user:${id}`)) { posts.push(this.fa.grant(this.projectId, this.folder.id, { userId: id, roleCode: null, canRead: true, canUpload: false, canDownload: false, canApprove: false, canDelete: false })); } }
+    for (const id of this.selectedUserIds()) { if (!existing.get(`user:${id}`)) { posts.push(this.fa.grant(this.projectId, folder.id, { userId: id, roleCode: null, canRead: true, canUpload: false, canDownload: false, canApprove: false, canDelete: false })); } }
     for (const g of this.access()) { if (g.userId != null && !this.selectedUserIds().includes(g.userId)) { deletes.push(g.id); } }
-    forkJoin([...posts, ...deletes.map(id => this.fa.revoke(this.projectId, this.folder.id, id) as any)]).pipe(first(), catchError(() => of(null as any))).subscribe({
-      next: () => { this.loadAccess(); this.saved.emit(this.folder.id); },
+    forkJoin([...posts, ...deletes.map(id => this.fa.revoke(this.projectId, folder.id, id) as any)]).pipe(first(), catchError(() => of(null as any))).subscribe({
+      next: () => { this.loadAccess(); this.saved.emit(folder.id); },
       error: () => { this.saveError.set('Échec de la sauvegarde des accès.'); this.loading.set(false); }
     });
   }
