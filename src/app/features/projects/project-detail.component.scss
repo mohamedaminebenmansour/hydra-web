@@ -51,6 +51,23 @@
 .user-empty { padding: 14px; text-align: center; color: #64748b; font-size: 14px; }
 .w100 { width: 100%; }
 :host ::ng-deep .full-dialog { width: 92vw; max-width: 480px; }
+
+/* Add member dialog: selected-user chip */
+.add-chip { display: flex; align-items: center; gap: 8px; background: #e0f2fe;
+  border: 1px solid #0ea5e9; border-radius: 8px; padding: 8px 12px; margin-bottom: 8px; }
+.add-chip-icon { color: #0ea5e9; }
+.add-chip-name { font-weight: 600; color: #1e293b; }
+.add-chip-email { font-size: 12px; color: #64748b; }
+.add-chip-remove { background: transparent; border: none; cursor: pointer;
+  color: #0ea5e9; padding: 2px; border-radius: 4px; }
+.add-chip-remove:hover { background: #f1f5f9; }
+
+/* Role buttons */
+.role-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.role-btns .p-button { min-width: 90px; justify-content: center; }
+.role-btns .p-button.selected { opacity: 1; }
+
+.hint { font-size: 12px; color: #64748b; margin-top: 4px; display: block; }
 @media (max-width: 560px) {
   :host ::ng-deep .full-dialog { width: 96vw; }
   .mrow { flex-direction: column; align-items: flex-start; }

@@ -70,6 +70,13 @@ export class ProjectDetailComponent implements OnInit {
 
   readonly roleOpts = PROJECT_ROLE_OPTS;
 
+  readonly addRoleBtns = [
+    { value: 'ADMIN' as ProjectRole, icon: 'pi pi-shield', color: '#dc2626' },
+    { value: 'MANAGER' as ProjectRole, icon: 'pi pi-briefcase', color: '#f97316' },
+    { value: 'ENGINEER' as ProjectRole, icon: 'pi pi-cog', color: '#2563eb' },
+    { value: 'VIEWER' as ProjectRole, icon: 'pi pi-eye', color: '#6b7280' },
+  ];
+
   // add dialog
   showAddDialog = false;
   addUserId: string | null = null;
@@ -182,6 +189,18 @@ export class ProjectDetailComponent implements OnInit {
     this.addRole = 'ENGINEER';
     this.addCanUpload = false;
     this.showAddDialog = true;
+  }
+
+  selectedAddUser(): { value: string; name: string; email: string } | null {
+    return this.availableUserOpts().find(u => u.value === this.addUserId) ?? null;
+  }
+
+  setAddRole(role: ProjectRole): void {
+    this.addRole = role;
+  }
+
+  isAddRoleSelected(role: ProjectRole): boolean {
+    return this.addRole === role;
   }
 
   filteredUsers(): { value: string; name: string; email: string }[] {

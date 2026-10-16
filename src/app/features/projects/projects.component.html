@@ -111,7 +111,10 @@
         <p-multiSelect [options]="memberOpts()" [(ngModel)]="formMembers"
                        placeholder="Ajouter des membres" optionLabel="label"
                        optionValue="value" [showClear]="true" [filter]="true"
-                       display="chip" styleClass="w100" />
+                       display="chip" styleClass="w100 member-chip" />
+        @if (formMembers.length) {
+          <small class="hint">{{ formMembers.length }} membre{{ formMembers.length > 1 ? 's' : '' }} sélectionné{{ formMembers.length > 1 ? 's' : '' }}</small>
+        }
       </div>
     }
     <div class="field">

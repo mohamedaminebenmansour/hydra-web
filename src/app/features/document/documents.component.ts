@@ -197,9 +197,27 @@ export class DocumentsComponent implements OnInit {
     this.showUploadDialog = true;
   }
 
+  private validateFile(file: File): string | null {
+    if (file.size === 0) { return 'Le fichier sélectionné est vide.'; }
+    const maxSize = 20 * 1024 * 1024; // 20 Mo
+    if (file.size > maxSize) { return 'Fichier trop volumineux (max 20 Mo).'; }
+    const allowed = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.png', '.jpg', '.jpeg', '.gif', '.webp'];
+    const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+    if (!allowed.includes(ext)) { return 'Type de fichier non autorisé (' + allowed.join(', ') + ').'; }
+    return null;
+  }
+
   onUploadFile(event: { files: File[] }): void {
     const file = event?.files?.[0];
     if (!file || !this.projectId || !this.folderId) { return; }
+
+    const validationErr = this.validateFile(file);
+    if (validationErr) {
+      this.msgs.add({ severity: 'error', summary: 'Fichier invalide', detail: validationErr });
+      this.fileUpload?.clear();
+      return;
+    }
+
     if (!this.uploadTitle.trim() || !this.uploadDocType) {
       this.msgs.add({ severity: 'warn', summary: 'Titre et type requis' });
       this.fileUpload?.clear();
@@ -232,10 +250,14 @@ export class DocumentsComponent implements OnInit {
       error: err => {
         this.uploading.set(false);
         this.fileUpload?.clear();
-        this.msgs.add({ severity: 'error', summary: 'Erreur',
-          detail: err.error?.message ?? err.error?.code ?? (err.status === 413
-            ? 'Fichier trop volumineux (max 50 Mo)'
-            : 'Téléversement impossible') });
+        if (err.status && err.status >= 500) {
+          this.msgs.add({ severity: 'error', summary: 'Erreur serveur', detail: 'Erreur serveur, réessayez' });
+        } else {
+          this.msgs.add({ severity: 'error', summary: 'Erreur',
+            detail: err.error?.message ?? err.error?.code ?? (err.status === 413
+              ? 'Fichier trop volumineux (max 50 Mo)'
+              : 'Téléversement impossible') });
+        }
       }
     });
   }
@@ -251,6 +273,14 @@ export class DocumentsComponent implements OnInit {
   onRevFile(event: { files: File[] }): void {
     const file = event?.files?.[0];
     if (!file || !this.revTarget) { return; }
+
+    const validationErr = this.validateFile(file);
+    if (validationErr) {
+      this.msgs.add({ severity: 'error', summary: 'Fichier invalide', detail: validationErr });
+      this.revFileUpload?.clear();
+      return;
+    }
+
     this.uploading.set(true);
     this.uploadProgress.set(0);
 
@@ -274,10 +304,14 @@ export class DocumentsComponent implements OnInit {
       error: err => {
         this.uploading.set(false);
         this.revFileUpload?.clear();
-        this.msgs.add({ severity: 'error', summary: 'Erreur',
-          detail: err.error?.message ?? err.error?.code ?? (err.status === 413
-            ? 'Fichier trop volumineux (max 50 Mo)'
-            : 'Révision impossible') });
+        if (err.status && err.status >= 500) {
+          this.msgs.add({ severity: 'error', summary: 'Erreur serveur', detail: 'Erreur serveur, réessayez' });
+        } else {
+          this.msgs.add({ severity: 'error', summary: 'Erreur',
+            detail: err.error?.message ?? err.error?.code ?? (err.status === 413
+              ? 'Fichier trop volumineux (max 50 Mo)'
+              : 'Révision impossible') });
+        }
       }
     });
   }

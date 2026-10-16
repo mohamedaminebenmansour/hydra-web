@@ -131,6 +131,18 @@
 <p-dialog [(visible)]="showAddDialog" [modal]="true" [style]="{ width: '480px' }"
           [styleClass]="'full-dialog'" header="Ajouter un membre">
   <div class="dlg-form">
+    @if (selectedAddUser()) {
+      <div class="add-chip">
+        <i class="pi pi-user add-chip-icon"></i>
+        <span class="add-chip-name">{{ selectedAddUser()!.name }}</span>
+        @if (selectedAddUser()!.email && selectedAddUser()!.email !== selectedAddUser()!.name) {
+          <span class="add-chip-email">{{ selectedAddUser()!.email }}</span>
+        }
+        <button class="add-chip-remove" type="button" (click)="addUserId = null" aria-label="Retirer">
+          <i class="pi pi-times"></i>
+        </button>
+      </div>
+    }
     <div class="field">
       <label>Utilisateur</label>
       <input pInputText class="inp" placeholder="Rechercher nom ou email"
@@ -151,18 +163,27 @@
     </div>
     <div class="field">
       <label>Rôle sur le chantier</label>
-      <p-select [options]="roleOpts" [(ngModel)]="addRole" optionLabel="label"
-                optionValue="value" styleClass="w100" />
+      <div class="role-btns">
+        @for (b of addRoleBtns; track b.value) {
+          <p-button [icon]="b.icon" [label]="b.value === 'ADMIN' ? 'Admin' : b.value === 'MANAGER' ? 'Chef de projet' : b.value === 'ENGINEER' ? 'Ingénieur' : 'Observateur'"
+                    [style]="{'background-color': isAddRoleSelected(b.value) ? b.color : 'transparent', 'border-color': isAddRoleSelected(b.value) ? b.color : '#cbd5e1', 'color': isAddRoleSelected(b.value) ? '#fff' : '#475569'}"
+                    [class.selected]="isAddRoleSelected(b.value)"
+                    (onClick)="setAddRole(b.value)" [disabled]="!addUserId" />
+        }
+      </div>
+      @if (!addUserId) {
+        <small class="hint">Sélectionnez un utilisateur ci-dessus</small>
+      }
     </div>
     <div class="switch-row">
       <p-toggleswitch [(ngModel)]="addCanUpload" inputId="add-upload" />
-      <label for="add-upload">Peut téléverser des documents</label>
+      <label for="add-upload"><i class="pi pi-upload"></i> Téléverser</label>
     </div>
   </div>
   <ng-template pTemplate="footer">
     <p-button label="Annuler" [text]="true" (onClick)="showAddDialog = false" />
     <p-button label="Ajouter" icon="pi pi-check" (onClick)="saveAdd()"
-              [disabled]="!addUserId" />
+              [disabled]="!addUserId" severity="primary" />
   </ng-template>
 </p-dialog>
 

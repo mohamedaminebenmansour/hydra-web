@@ -5,11 +5,9 @@
 .fa-error { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px;
   padding: 10px 12px; font-size: 13px; margin-bottom: 6px; }
 
-.fa-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px;
+.fa-warn { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; border-radius: 8px;
   padding: 10px 12px; font-size: 13px; display: flex; gap: 8px; align-items: flex-start; }
-.fa-warn i { margin-top: 2px; color: #d97706; }
-
-.fa-sections { display: flex; flex-direction: column; gap: 14px; }
+.fa-warn i { margin-top: 2px; color: #dc2626; }
 
 .fa-section { display: flex; flex-direction: column; gap: 10px; background: #fff;
   border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px; }
@@ -21,14 +19,25 @@
 .fa-role-row { display: flex; justify-content: space-between; align-items: center;
   gap: 12px; padding: 8px 4px; border-bottom: 1px solid #f1f5f9; }
 .fa-role-row:last-child { border-bottom: none; }
-.fa-role-label { font-weight: 600; color: #334155; font-size: 14px; }
+.fa-role-row.blocked { opacity: 0.6; }
+.fa-role-info { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.fa-role-icon { font-size: 18px; flex-shrink: 0; }
+.fa-role-label { font-weight: 600; color: #334155; font-size: 14px; min-width: 0; }
 .fa-role-chip { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 12px;
   border: 1px solid #cbd5e1; color: #64748b; flex-shrink: 0; }
+.fa-role-chip.active { background: #dcfce7; color: #15803d; border-color: #86efac; }
 .fa-role-chip.blocked { background: #fef3c7; color: #92400e; border-color: #fde68a; }
 
-.fa-perms { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; flex-shrink: 0; }
-.fa-perm { font-size: 12px; color: #475569; user-select: none; }
-.fa-perms .p-toggleswitch { width: 44px; }
+.fa-perms { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.fa-perm-btn { width: 36px; height: 36px; border: 1px solid #cbd5e1; border-radius: 8px;
+  background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  padding: 0; }
+.fa-perm-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.fa-perm-btn.on { border-color: #15803d; background: #dcfce7; }
+.fa-perm-btn.off { border-color: #cbd5e1; background: #fff; }
+.fa-perm-btn i { font-size: 16px; }
+.fa-perm-btn i.on { color: #15803d; }
+.fa-perm-btn i.off { color: #94a3b8; }
 
 .fa-hint { font-size: 12px; color: #64748b; margin-top: 6px; }
 .fa-hint i { color: #94a3b8; margin-right: 6px; }
@@ -36,6 +45,13 @@
 .fa-field { display: flex; flex-direction: column; gap: 6px; }
 .fa-field label { font-size: 13px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; }
 .fa-input { width: 100%; font-size: 14px; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 8px; }
+
+.fa-selected-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.fa-chips-label { font-size: 12px; font-weight: 600; color: #475569; }
+.fa-chip { display: flex; align-items: center; gap: 6px; background: #e0f2fe; border: 1px solid #0ea5e9;
+  border-radius: 6px; padding: 4px 8px; font-size: 13px; color: #0c4a6e; }
+.fa-chip-remove { background: transparent; border: none; cursor: pointer; color: #0c4a6e; font-size: 16px; padding: 0 4px; line-height: 1; }
+.fa-chip-remove:hover { color: #0369a1; }
 
 .fa-user-list { border: 1px solid #e2e8f0; border-radius: 8px; max-height: 220px; overflow-y: auto; }
 .fa-user-row { display: flex; justify-content: space-between; align-items: center; gap: 8px;
@@ -55,8 +71,7 @@
 
 @media (max-width: 560px) {
   :host ::ng-deep .p-dialog { width: 96vw !important; }
-  .fa-perms { gap: 8px; }
-  .fa-perm { font-size: 11px; }
+  .fa-perms { gap: 6px; }
   .fa-role-row { flex-direction: column; align-items: flex-start; gap: 8px; }
   .fa-perms { width: 100%; }
 }

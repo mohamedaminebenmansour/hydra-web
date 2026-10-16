@@ -9,7 +9,6 @@ import { InputTextModule } from 'primeng/inputtext';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
-import { ToggleSwitchModule } from 'primeng/toggleswitch';
 import { ChipModule } from 'primeng/chip';
 import { BadgeModule } from 'primeng/badge';
 
@@ -22,10 +21,40 @@ import { COMPANY_ROLE_OPTS, COMPANY_ROLE_LABELS, FolderAccess, FolderAccessGrant
 
 const D = [true, false, false, false, false];
 
+const ROLE_ICONS: Record<string, string> = {
+  OWNER: 'pi pi-user',
+  DIRECTION: 'pi pi-crown',
+  CHEF_PROJET: 'pi pi-briefcase',
+  DOC_CTRL: 'pi pi-file',
+  INGENIEUR: 'pi pi-cog',
+  CONDUCTEUR: 'pi pi-hard-hat',
+  QA: 'pi pi-check-circle',
+  CHEF_CHANTIER: 'pi pi-map-signs',
+  FINANCE: 'pi pi-wallet',
+  ACHAT: 'pi pi-shopping-cart',
+  HSE: 'pi pi-shield',
+  SOUS_TRAITANT: 'pi pi-users'
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  OWNER: '#059669',
+  DIRECTION: '#1d4ed8',
+  CHEF_PROJET: '#2563eb',
+  DOC_CTRL: '#6366f1',
+  INGENIEUR: '#7c3aed',
+  CONDUCTEUR: '#0891b2',
+  QA: '#be185d',
+  CHEF_CHANTIER: '#b45309',
+  FINANCE: '#15803d',
+  ACHAT: '#0f766e',
+  HSE: '#dc2626',
+  SOUS_TRAITANT: '#6b7280'
+};
+
 @Component({
   selector: 'app-folder-access-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule, DialogModule, InputTextModule, ButtonModule, TagModule, TooltipModule, ToggleSwitchModule, ChipModule, BadgeModule],
+  imports: [CommonModule, FormsModule, DialogModule, InputTextModule, ButtonModule, TagModule, TooltipModule, ChipModule, BadgeModule],
   templateUrl: './folder-access-dialog.component.html',
   styleUrl: './folder-access-dialog.component.scss'
 })
@@ -47,7 +76,11 @@ export class FolderAccessDialogComponent {
   readonly selectedUserIds = signal<string[]>([]);
   readonly rolePerms = signal<Record<string, boolean[]>>({});
 
+  readonly permIcons = ['pi pi-eye', 'pi pi-upload', 'pi pi-download', 'pi pi-check', 'pi pi-trash'];
+  readonly permLabels = ['Lire', 'Télécharger', 'Téléverser', 'Approuver', 'Supprimer'];
+
   ngOnInit(): void { if (this.folder) { this.loadAccess(); this.fetchUsers(); } }
+
   private loadAccess(): void {
     if (!this.folder) { return; }
     this.loading.set(true);
@@ -56,16 +89,19 @@ export class FolderAccessDialogComponent {
       error: () => { this.access.set([]); this.loading.set(false); }
     });
   }
+
   private fetchUsers(): void { this.us.options().pipe(first()).subscribe({ next: l => this.users.set(l ?? []), error: () => this.users.set([]) }); }
+
   private hydrate(): void {
     const p: Record<string, boolean[]> = {};
     for (const g of this.access()) { if (g.userId == null && g.roleCode) { p[g.roleCode] = [g.canRead, g.canUpload, g.canDownload, g.canApprove, g.canDelete]; } }
     this.rolePerms.set(p);
   }
+
   roleLabel(code: string): string { return COMPANY_ROLE_LABELS[code] ?? code; }
-  roleBadgeLabel(code: string): string {
-    return this.access().some(g => g.userId == null && g.roleCode === code) ? 'Activé' : 'Créer';
-  }
+  roleIcon(code: string): string { return ROLE_ICONS[code] ?? 'pi pi-user'; }
+  roleColor(code: string): string { return ROLE_COLORS[code] ?? '#64748b'; }
+  roleIsActive(code: string): boolean { return this.access().some(g => g.userId == null && g.roleCode === code); }
   rolePermsFor(code: string): boolean[] { return this.rolePerms()[code] ?? [...D]; }
   setRolePerm(code: string, idx: number, value: boolean): void {
     this.rolePerms.update(prev => { const next = [...(prev[code] ?? [...D])]; next[idx] = !!value; if (idx !== 0 && (next[1] || next[2] || next[3] || next[4])) { next[0] = true; } return { ...prev, [code]: next }; });
@@ -77,7 +113,6 @@ export class FolderAccessDialogComponent {
     const has = this.access().some(a => a.userId == null && a.roleCode === 'SOUS_TRAITANT');
     return has ? 'Le dossier Finance est verrouillé : les accès par sous-traitant sont interdits.' : null;
   }
-  openSearch(): void { this.userResults.set(this.users()); this.searchText.set(''); }
   searchUsers(): void {
     const q = this.searchText().trim().toLowerCase(); const list = this.users();
     if (!q) { this.userResults.set(list); return; }
@@ -85,6 +120,11 @@ export class FolderAccessDialogComponent {
   }
   isSelected(userId: string): boolean { return this.selectedUserIds().includes(userId); }
   toggleUser(userId: string): void { this.selectedUserIds.update(ids => ids.includes(userId) ? ids.filter(i => i !== userId) : [...ids, userId]); }
+
+  selectedUserChips(): UserOptionDto[] {
+    return this.selectedUserIds().map(id => this.users().find(u => u.id === id)).filter((u): u is UserOptionDto => !!u);
+  }
+
   save(): void {
     if (!this.folder) { return; }
     const folder = this.folder;
