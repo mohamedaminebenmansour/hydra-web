@@ -1,8 +1,8 @@
-import { Component, inject, Input, Output, signal, EventEmitter } from '@angular/core';
+import { Component, inject, Input, Output, signal, EventEmitter, SimpleChanges, SimpleChange, OnChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of } from 'rxjs';
-import { catchError, first } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
+import { first } from 'rxjs/operators';
 
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
@@ -11,6 +11,7 @@ import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { ChipModule } from 'primeng/chip';
 import { BadgeModule } from 'primeng/badge';
+import { MessageService } from 'primeng/api';
 
 import { Folder } from '@app/core/models/folder.model';
 import { UserOptionDto } from '@app/core/models/user.model';
@@ -58,10 +59,11 @@ const ROLE_COLORS: Record<string, string> = {
   templateUrl: './folder-access-dialog.component.html',
   styleUrl: './folder-access-dialog.component.scss'
 })
-export class FolderAccessDialogComponent {
+export class FolderAccessDialogComponent implements OnChanges {
   readonly roleOpts = COMPANY_ROLE_OPTS;
   private readonly fa = inject(FolderAccessService);
   private readonly us = inject(UserService);
+  private readonly msgs = inject(MessageService);
   @Output() saved = new EventEmitter<string>();
   @Output() visibleChange = new EventEmitter<boolean>();
   @Input() visible = false;
@@ -77,9 +79,25 @@ export class FolderAccessDialogComponent {
   readonly rolePerms = signal<Record<string, boolean[]>>({});
 
   readonly permIcons = ['pi pi-eye', 'pi pi-upload', 'pi pi-download', 'pi pi-check', 'pi pi-trash'];
-  readonly permLabels = ['Lire', 'Télécharger', 'Téléverser', 'Approuver', 'Supprimer'];
+  readonly permLabels = ['Lecture (obligatoire)', 'Télécharger', 'Téléverser', 'Approuver', 'Supprimer'];
 
-  ngOnInit(): void { if (this.folder) { this.loadAccess(); this.fetchUsers(); } }
+  ngOnChanges(changes: SimpleChanges): void {
+    const ch = changes['visible'] as SimpleChange | undefined;
+    if (ch && ch.currentValue === true) {
+      this.reload();
+    }
+  }
+
+  ngOnInit(): void { if (this.folder && this.visible) { this.reload(); } }
+
+  private reload(): void {
+    if (!this.folder || !this.projectId) { return; }
+    this.loading.set(true);
+    this.saveError.set(null);
+    this.selectedUserIds.set([]);
+    this.loadAccess();
+    this.fetchUsers();
+  }
 
   private loadAccess(): void {
     if (!this.folder) { return; }
@@ -90,12 +108,22 @@ export class FolderAccessDialogComponent {
     });
   }
 
-  private fetchUsers(): void { this.us.options().pipe(first()).subscribe({ next: l => this.users.set(l ?? []), error: () => this.users.set([]) }); }
+  private fetchUsers(): void {
+    this.us.options().pipe(first()).subscribe({
+      next: l => { const list = l ?? []; this.users.set(list); this.userResults.set(list); },
+      error: () => { this.users.set([]); this.userResults.set([]); }
+    });
+  }
 
   private hydrate(): void {
     const p: Record<string, boolean[]> = {};
-    for (const g of this.access()) { if (g.userId == null && g.roleCode) { p[g.roleCode] = [g.canRead, g.canUpload, g.canDownload, g.canApprove, g.canDelete]; } }
+    const userIds: string[] = [];
+    for (const g of this.access()) {
+      if (g.userId == null && g.roleCode) { p[g.roleCode] = [g.canRead, g.canUpload, g.canDownload, g.canApprove, g.canDelete]; }
+      if (g.userId != null) { userIds.push(g.userId); }
+    }
     this.rolePerms.set(p);
+    this.selectedUserIds.set(userIds);
   }
 
   roleLabel(code: string): string { return COMPANY_ROLE_LABELS[code] ?? code; }
@@ -137,11 +165,18 @@ export class FolderAccessDialogComponent {
       if (p.some(v => v)) { posts.push(this.fa.grant(this.projectId, folder.id, { roleCode: code, userId: null, canRead: true, canUpload: p[1], canDownload: p[2], canApprove: p[3], canDelete: p[4] })); }
       else { const e = existing.get(`role:${code}`); if (e) { deletes.push(e.id); } }
     }
-    for (const id of this.selectedUserIds()) { if (!existing.get(`user:${id}`)) { posts.push(this.fa.grant(this.projectId, folder.id, { userId: id, roleCode: null, canRead: true, canUpload: false, canDownload: false, canApprove: false, canDelete: false })); } }
+    for (const id of this.selectedUserIds()) { if (!existing.get(`user:${id}`)) { posts.push(this.fa.grant(this.projectId, folder.id, { userId: id, roleCode: null, canRead: true, canUpload: false, canDownload: true, canApprove: false, canDelete: false })); } }
     for (const g of this.access()) { if (g.userId != null && !this.selectedUserIds().includes(g.userId)) { deletes.push(g.id); } }
-    forkJoin([...posts, ...deletes.map(id => this.fa.revoke(this.projectId, folder.id, id) as any)]).pipe(first(), catchError(() => of(null as any))).subscribe({
-      next: () => { this.loadAccess(); this.saved.emit(folder.id); },
-      error: () => { this.saveError.set('Échec de la sauvegarde des accès.'); this.loading.set(false); }
+
+    const requests = [...posts, ...deletes.map(id => this.fa.revoke(this.projectId, folder.id, id) as any)];
+    if (requests.length === 0) {
+      this.msgs.add({ severity: 'info', summary: 'Aucun changement', detail: 'Aucun accès n\'a été modifié.' });
+      this.loading.set(false);
+      return;
+    }
+    forkJoin(requests).pipe(first()).subscribe({
+      next: () => { this.loadAccess(); this.saved.emit(folder.id); this.loading.set(false); this.msgs.add({ severity: 'success', summary: 'Accès enregistrés', detail: 'Les droits d’accès ont été enregistrés.' }); },
+      error: (err) => { const msg = err.error?.message ?? 'Échec de la sauvegarde des accès.'; this.saveError.set(msg); this.loading.set(false); this.msgs.add({ severity: 'error', summary: 'Erreur', detail: msg }); }
     });
   }
 }
