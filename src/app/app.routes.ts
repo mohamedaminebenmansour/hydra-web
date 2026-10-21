@@ -33,6 +33,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/roles/role-detail.component').then(m => m.RoleDetailComponent) },
       { path: 'audit', canActivate: [permGuard(PERM.AUDIT_VIEW)],
         loadComponent: () => import('./features/audit/audit.component').then(m => m.AuditComponent) }
+/** --- Process routes (new) --- */
+      { path: 'mes-taches', loadComponent: () => import('./features/process/my-tasks.component').then(m => m.MyTasksComponent) },
+      { path: 'processes/:id', loadComponent: () => import('./features/process/process-timeline.component').then(m => m.ProcessTimelineComponent) },
+      { path: 'process-test', loadComponent: () => import('./features/process/start-process.component').then(m => m.StartProcessComponent) },
     ]
   },
   { path: '**', redirectTo: '' }

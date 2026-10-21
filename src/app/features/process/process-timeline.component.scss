@@ -1,0 +1,92 @@
+:host {
+  display: block;
+}
+
+.process-timeline { padding: 24px; }
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.timeline-header h2 {
+  margin: 0;
+  font-size: 24px;
+  color: #0f172a;
+}
+
+.timeline-events {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.timeline-event {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.timeline-event:last-child {
+  border-bottom: none;
+}
+
+.timeline-dot {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timeline-dot p-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.timeline-content {
+  flex: 1;
+}
+
+.timeline-content h3 {
+  margin: 0 0 4px 0;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+.timeline-content p {
+  margin: 2px 0 0 0;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.timeline-content p timelines-comment {
+  margin-top: 4px;
+  font-style: italic;
+  color: #94a3b8;
+}
+
+.empty-timeline {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
+.empty-timeline i {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  color: #94a3b8;
+}
+
+/* Status classes */
+.event-done { color: #059669; }
+.event-current { color: #d97706; }
+.event-rejected { color: #dc2626; }

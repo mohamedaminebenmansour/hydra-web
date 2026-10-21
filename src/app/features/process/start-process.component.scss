@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+.start-process { padding: 24px; max-width: 600px; margin: 0 auto; }
+
+.form-group {
+  margin-bottom: 24px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #3f3f3f;
+}
+
+.form-group p-inputtext,
+.form-group p-select {
+  width: 100%;
+}
+
+.form-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: 24px;
+  justify-content: flex-end;
+}

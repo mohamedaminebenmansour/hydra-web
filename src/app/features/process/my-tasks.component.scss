@@ -1,0 +1,112 @@
+:host {
+  display: block;
+}
+
+.tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.task-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  transition: box-shadow .15s;
+  cursor: pointer;
+}
+
+.task-card:hover {
+  box-shadow: 0 6px 20px rgba(15,23,42,.12);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.card-project {
+  font-weight: 700;
+  font-size: 16px;
+  color: #0f172a;
+}
+
+.card-step {
+  font-size: 13px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.card-body {
+  flex: 1;
+  margin-top: 8px;
+}
+
+.card-subject {
+  font-size: 14px;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.card-assignee {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.card-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.btn-validate,
+.btn-reject {
+  min-width: 80px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #64748b;
+}
+
+.empty-state i {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  color: #94a3b8;
+}
+
+.empty-state p {
+  font-size: 18px;
+  margin: 0;
+}
+
+/* Status badge styles */
+.badge-done { color: #059669; }
+.badge-current { color: #d97706; }
+.badge-rejected { color: #dc2626; }
+
+/* Loading skeleton */
+@keyframes shimmer {
+  0% { background-position: -468px 0; }
+  100% { background-position: 468px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%);
+  background-size: 468px 100%;
+  animation: shimmer 2s infinite;
+  height: 40px;
+  border-radius: 4px;
+}
