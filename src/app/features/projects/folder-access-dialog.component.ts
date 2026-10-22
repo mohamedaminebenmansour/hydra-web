@@ -13,12 +13,12 @@ import { ChipModule } from 'primeng/chip';
 import { BadgeModule } from 'primeng/badge';
 import { MessageService } from 'primeng/api';
 
-import { Folder } from '@app/core/models/folder.model';
 import { UserOptionDto } from '@app/core/models/user.model';
 import { UserService } from '@app/core/services/user.service';
 import { FolderAccessService } from '@app/core/services/folder-access.service';
 
 import { COMPANY_ROLE_OPTS, COMPANY_ROLE_LABELS, FolderAccess, FolderAccessGrant } from '@app/core/models/folder.model';
+import { ProjectFolder } from '@app/core/models/project.model';
 
 const D = [true, false, false, false, false];
 
@@ -68,7 +68,7 @@ export class FolderAccessDialogComponent implements OnChanges {
   @Output() visibleChange = new EventEmitter<boolean>();
   @Input() visible = false;
   @Input() projectId = '';
-  @Input() folder: Folder | null = null;
+  @Input() folder: ProjectFolder | null = null;
   readonly loading = signal(false);
   readonly saveError = signal<string | null>(null);
   readonly access = signal<FolderAccess[]>([]);
