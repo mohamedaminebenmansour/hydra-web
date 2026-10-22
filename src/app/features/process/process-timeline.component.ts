@@ -6,7 +6,7 @@ import { TagModule } from 'primeng/tag';
 import { BadgeModule } from 'primeng/badge';
 import { MessageService } from 'primeng/api';
 import { ProcessService } from '@app/core/services/process.service';
-import { ProcessStepView, mapProcessStep, ProcessHeader, mapProcessHeader } from '@app/core/models/process.model';
+import { ProcessStepView, ProcessHeader, ProcessStatus } from '@app/core/models/process.model';
 
 @Component({
   selector: 'app-process-timeline',
@@ -84,9 +84,9 @@ export class ProcessTimelineComponent implements OnInit {
   load(): void {
     this.loading.set(true);
     this.processService.getTimeline(this.processId).subscribe({
-      next: result => {
-        const backend = result?.process ?? null;
-        this.process.set(backend ? mapProcessHeader(backend) : null);
+      next: (result: { process: ProcessHeader; steps: ProcessStepView[] }) => {
+        // The service already returns a mapped ProcessHeader — do not map it twice.
+        this.process.set(result?.process ?? null);
         const steps = (result?.steps ?? []).slice().sort((a: ProcessStepView, b: ProcessStepView) => {
           const da = a.completedAt ?? '';
           const db = b.completedAt ?? '';
@@ -103,27 +103,29 @@ export class ProcessTimelineComponent implements OnInit {
   }
 
   statusSeverity = computed(() => {
-    const m: Record<'RUNNING' | 'COMPLETED' | 'REJECTED', 'success' | 'danger' | 'warn'> = {
+    const m: Record<ProcessStatus, 'success' | 'danger' | 'warn'> = {
       COMPLETED: 'success',
       REJECTED: 'danger',
       RUNNING: 'warn',
+      DRAFT: 'warn',
     };
     return m[this.statusKey()] ?? 'warn';
   });
 
   statusLabel = computed(() => {
-    const m: Record<'RUNNING' | 'COMPLETED' | 'REJECTED', string> = {
+    const m: Record<ProcessStatus, string> = {
       COMPLETED: 'Terminé',
       REJECTED: 'Refusé',
       RUNNING: 'En cours',
+      DRAFT: 'Brouillon',
     };
     return m[this.statusKey()] ?? 'En cours';
   });
 
   /** Narrowed process status, safe to use as a record key. */
-  private statusKey(): 'RUNNING' | 'COMPLETED' | 'REJECTED' {
+  private statusKey(): ProcessStatus {
     const status = this.process()?.status;
-    return status === 'COMPLETED' || status === 'REJECTED' ? status : 'RUNNING';
+    return status === 'COMPLETED' || status === 'REJECTED' || status === 'DRAFT' ? status : 'RUNNING';
   }
 
   dotIcon(status: string): string {

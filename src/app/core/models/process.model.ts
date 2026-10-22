@@ -1,10 +1,16 @@
+/** Status of a single step inside a process instance. */
+export type StepStatus = 'DONE' | 'PENDING' | 'REJECTED';
+
+/** Status of a whole process instance. */
+export type ProcessStatus = 'RUNNING' | 'COMPLETED' | 'REJECTED' | 'DRAFT';
+
 export interface ProcessStepView {
   /** Unique step instance ID (backend returns stepInstanceId) */
   stepInstanceId: string;
   /** Human-readable step name, e.g. "Paiement à valider" */
   stepName: string;
   /** Status: 'DONE' | 'PENDING' | 'REJECTED' */
-  status: 'DONE' | 'PENDING' | 'REJECTED';
+  status: StepStatus;
   /** Who performed the step (full name or initials) */
   assigneeName: string;
   /** When it was completed/started (ISO string, normalized by mapper) */
@@ -26,17 +32,19 @@ export interface MyTask {
   processName: string;
   stepInstanceId: string;
   stepName: string;
-  subjectType: string;   // e.g. 'PAYMENT_APPROVAL'
+  subjectType: string;   // e.g. 'PAYMENT'
   subjectId: string;     // UUID of the payment/subject
   assigneeName: string;
-  status: 'PENDING' | 'REJECTED' | 'DONE';
+  status: StepStatus;
   isOverdue?: boolean;
 }
 
 /** Full process snapshot for the timeline header */
 export interface ProcessHeader {
+  /** Process instance ID when the backend exposes it */
+  id?: string;
   /** Backend process status */
-  status: 'RUNNING' | 'COMPLETED' | 'REJECTED' | 'DRAFT';
+  status: ProcessStatus;
   /** Template / project name */
   templateName: string;
   /** Human-readable status label */
@@ -53,18 +61,23 @@ export interface ProcessHeader {
  *  - POST /steps/{id}/complete → { stepInstanceId, newStatus }
  *  - POST /steps/{id}/reject   → { stepInstanceId, newStatus, comment }
  */
-export type StepStatus = 'DONE' | 'PENDING' | 'REJECTED';
+const STEP_STATUS_LABELS: Record<StepStatus, string> = {
+  DONE: 'Terminé',
+  PENDING: 'En attente de vous',
+  REJECTED: 'Refusé',
+};
+
+const PROCESS_STATUS_LABELS: Record<ProcessStatus, string> = {
+  RUNNING: 'En cours',
+  COMPLETED: 'Terminé',
+  REJECTED: 'Refusé',
+  DRAFT: 'Brouillon',
+};
 
 export function mapProcessStep(raw: any): ProcessStepView {
   const rawStatus = String(raw?.status ?? raw?.step_status ?? 'PENDING').toUpperCase();
   const status: StepStatus =
     rawStatus === 'DONE' || rawStatus === 'REJECTED' ? rawStatus : 'PENDING';
-
-  const m: Record<StepStatus, string> = {
-    DONE: 'Terminé',
-    PENDING: 'En attente de vous',
-    REJECTED: 'Refusé',
-  };
 
   return {
     stepInstanceId: String(raw?.stepInstanceId ?? raw?.step_instance_id ?? raw?.id ?? ''),
@@ -73,37 +86,42 @@ export function mapProcessStep(raw: any): ProcessStepView {
     assigneeName: String(raw?.assigneeName ?? raw?.assigneeUserEmail ?? raw?.assignee ?? ''),
     completedAt: raw?.completedAt ?? raw?.completed_at ?? null,
     comment: raw?.comment ?? null,
-    statusFrench: m[status],
+    statusFrench: STEP_STATUS_LABELS[status],
   };
 }
 
 export function mapMyTask(raw: any): MyTask {
+  // Backend MyTaskSummary: stepInstanceId, instanceId, templateKey,
+  // subjectType, subjectId, stepName/name, instanceStatus
+  const rawStatus = String(raw?.status ?? raw?.instanceStatus ?? 'PENDING').toUpperCase();
+  const status: StepStatus =
+    rawStatus === 'DONE' || rawStatus === 'REJECTED' ? rawStatus : 'PENDING';
+
   return {
-    processId: raw?.processId ?? raw?.process_id ?? '',
-    processName: raw?.processName ?? raw?.process_name ?? 'Processus inconnu',
-    stepInstanceId: raw?.stepInstanceId ?? raw?.step_instance_id ?? '',
-    stepName: raw?.stepName ?? raw?.step_name ?? raw?.subject ?? 'Étape en attente',
-    subjectType: raw?.subjectType ?? raw?.subject_type ?? 'PAYMENT_APPROVAL',
-    subjectId: raw?.subjectId ?? raw?.subject_id ?? '',
-    assigneeName: raw?.assigneeName ?? raw?.assignee ?? raw?.assignedToName ?? raw?.assigned_to ?? '',
-    status: (raw?.status ?? raw?.step_status ?? 'PENDING') as 'PENDING' | 'REJECTED' | 'DONE',
+    processId: String(raw?.processId ?? raw?.instanceId ?? raw?.instance_id ?? ''),
+    processName: String(raw?.processName ?? raw?.templateKey ?? raw?.template_key ?? 'Processus'),
+    stepInstanceId: String(raw?.stepInstanceId ?? raw?.step_instance_id ?? raw?.id ?? ''),
+    stepName: String(raw?.stepName ?? raw?.name ?? raw?.step_key ?? 'Étape'),
+    subjectType: String(raw?.subjectType ?? raw?.subject_type ?? ''),
+    subjectId: String(raw?.subjectId ?? raw?.subject_id ?? ''),
+    assigneeName: String(raw?.assigneeName ?? raw?.assigneeUserEmail ?? ''),
+    status,
     isOverdue: !!raw?.isOverdue,
   };
 }
 
 export function mapProcessHeader(raw: any): ProcessHeader {
-  const status = (raw?.status ?? raw?.process_status ?? 'RUNNING') as 'RUNNING' | 'COMPLETED' | 'REJECTED' | 'DRAFT';
-  // French labels per UX rules
-  const statusLabelMap: Record<string, string> = {
-    RUNNING: 'En cours',
-    COMPLETED: 'Terminé',
-    REJECTED: 'Refusé',
-    DRAFT: 'Brouillon',
-  };
+  const rawStatus = String(raw?.status ?? raw?.process_status ?? 'RUNNING').toUpperCase();
+  const status: ProcessStatus =
+    rawStatus === 'COMPLETED' || rawStatus === 'REJECTED' || rawStatus === 'DRAFT'
+      ? rawStatus
+      : 'RUNNING';
+
   return {
+    id: raw?.id != null ? String(raw.id) : undefined,
     status,
-    templateName: raw?.templateName ?? raw?.template_name ?? raw?.projectName ?? 'Processus',
-    statusLabel: statusLabelMap[status] ?? status,
-    startedAt: raw?.startedAt ?? raw?.started_at ?? null,
+    templateName: String(raw?.templateName ?? raw?.template_key ?? raw?.templateKey ?? 'Processus'),
+    statusLabel: PROCESS_STATUS_LABELS[status],
+    startedAt: raw?.startedAt ?? raw?.created_at ?? raw?.createdAt ?? null,
   };
 }

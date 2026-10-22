@@ -2,11 +2,7 @@ import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
-import { DialogModule } from 'primeng/dialog';
-import { InputTextModule } from 'primeng/inputtext';
-import { TextareaModule } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
-import { AuthService } from '@app/core/auth.service';
 import { ProcessService } from '@app/core/services/process.service';
 import { MyTask, StepStatus } from '@app/core/models/process.model';
 
@@ -14,7 +10,7 @@ import { MyTask, StepStatus } from '@app/core/models/process.model';
   selector: 'app-my-tasks',
   standalone: true,
   styleUrl: './my-tasks.component.scss',
-  imports: [ButtonModule, DialogModule, InputTextModule, TextareaModule, NgClass, FormsModule],
+  imports: [ButtonModule, NgClass, FormsModule],
   template: `
     <section class="my-tasks">
       <header class="section-header">
@@ -43,7 +39,7 @@ import { MyTask, StepStatus } from '@app/core/models/process.model';
                         severity="success"
                         size="small"
                         [outlined]="true"
-                        (onClick)="validate(task.stepInstanceId)"
+                        (onClick)="validate(task)"
                         class="btn-validate"
                   ></button>
                   <button pButton
@@ -81,19 +77,15 @@ import { MyTask, StepStatus } from '@app/core/models/process.model';
 })
 export class MyTasksComponent implements OnInit {
   private processService = inject(ProcessService);
-  private auth = inject(AuthService);
   private msgs = inject(MessageService);
 
   loading = signal(true);
   allTasks = signal<MyTask[]>([]);
 
-  visibleTasks = computed<MyTask[]>(() => {
-    const tasks = this.allTasks();
-    return tasks;
-  });
+  visibleTasks = computed<MyTask[]>(() => this.allTasks());
 
-  taskStatusFrench = (status: StepStatus) => {
-    const m: Record<'DONE' | 'PENDING' | 'REJECTED', string> = {
+  taskStatusFrench = (status: StepStatus): string => {
+    const m: Record<StepStatus, string> = {
       DONE: 'Terminé',
       PENDING: 'En attente de vous',
       REJECTED: 'Refusé',
@@ -102,9 +94,14 @@ export class MyTasksComponent implements OnInit {
   };
 
   ngOnInit(): void {
+    this.reload();
+  }
+
+  /** Re-fetch the task list from the backend. */
+  reload(): void {
     this.loading.set(true);
     this.processService.myTasks().subscribe({
-      next: tasks => {
+      next: (tasks: MyTask[]) => {
         this.allTasks.set(tasks ?? []);
         this.loading.set(false);
       },
@@ -120,12 +117,11 @@ export class MyTasksComponent implements OnInit {
     return task.status === 'PENDING';
   }
 
-  validate(stepInstanceId: string): void {
-    const task = this.allTasks().find(t => t.stepInstanceId === stepInstanceId);
-    this.processService.complete(task?.processId ?? '', stepInstanceId, {}).subscribe({
+  validate(task: MyTask): void {
+    this.processService.complete(task.processId, task.stepInstanceId, {}).subscribe({
       next: () => {
         this.msgs.add({ severity: 'success', summary: 'Validé' });
-        this.allTasks.set([]); // refresh list
+        this.reload();
       },
       error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la validation' }),
     });
@@ -133,11 +129,11 @@ export class MyTasksComponent implements OnInit {
 
   openRejectDialog(task: MyTask): void {
     const comment = prompt('Commentaire pour le rejet :');
-    if (comment === null) return; // user cancelled
+    if (comment === null) { return; } // user cancelled
     this.processService.reject(task.processId, task.stepInstanceId, comment).subscribe({
       next: () => {
         this.msgs.add({ severity: 'success', summary: 'Rejeté' });
-        this.allTasks.set([]);
+        this.reload();
       },
       error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Échec du rejet' }),
     });
