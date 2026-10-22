@@ -9,13 +9,13 @@ import { ProjectService } from '@app/core/services/project.service';
 interface NavItem { label: string; icon: string; path: string; perm: string; }
 
 const NAV: NavItem[] = [
-  { label: 'Accueil',        icon: 'pi pi-home',     path: '/',        perm: '' },
-  { label: 'Tickets',        icon: 'pi pi-ticket',   path: '/tickets', perm: PERM.TICKET_READ },
-  { label: 'Chantiers',      icon: 'pi pi-briefcase', path: '/projects', perm: PERM.PROJECT_READ },
-  { label: 'Utilisateurs',   icon: 'pi pi-users',    path: '/users',   perm: PERM.USER_CREATE },
-  { label: 'Rôles',          icon: 'pi pi-id-card',  path: '/roles',   perm: PERM.ROLE_MANAGE },
-  { label: 'Journal',        icon: 'pi pi-history',  path: '/audit',   perm: PERM.AUDIT_VIEW },
-{ label: 'Mes tâches',     icon: 'pi pi-folder',   path: '/mes-taches', perm: '' },
+  { label: 'Accueil',        icon: 'pi pi-home',      path: '/',           perm: '' },
+  { label: 'Tickets',        icon: 'pi pi-ticket',    path: '/tickets',    perm: PERM.TICKET_READ },
+  { label: 'Chantiers',      icon: 'pi pi-briefcase', path: '/projects',  perm: PERM.PROJECT_READ },
+  { label: 'Utilisateurs',   icon: 'pi pi-users',     path: '/users',     perm: PERM.USER_CREATE },
+  { label: 'Rôles',          icon: 'pi pi-id-card',   path: '/roles',     perm: PERM.ROLE_MANAGE },
+  { label: 'Journal',        icon: 'pi pi-history',   path: '/audit',     perm: PERM.AUDIT_VIEW },
+  { label: 'Mes tâches',     icon: 'pi pi-folder',    path: '/mes-taches', perm: '' },
 ];
 
 @Component({

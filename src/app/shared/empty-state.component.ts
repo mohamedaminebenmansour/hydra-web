@@ -2,7 +2,6 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
 
 @Component({
-
   selector: 'app-empty-state',
   standalone: true,
   imports: [ButtonModule],
@@ -11,9 +10,9 @@ import { ButtonModule } from 'primeng/button';
       <i class="pi {{ icon }}"></i>
       <p>{{ message }}</p>
       @if (buttonLabel) {
-        <p-button [label]="buttonLabel" (onClick)="buttonAction.emit()" />
+        <p-button [label]="buttonLabel" (onClick)="buttonAction.emit()"></p-button>
       }
-      <ng-content />
+      <ng-content></ng-content>
     </div>
   `,
   styles: [`
