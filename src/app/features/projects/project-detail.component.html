@@ -8,12 +8,13 @@
     <div class="head-left">
       <p-button icon="pi pi-arrow-left" label="Retour" [text]="true" (onClick)="back()" />
       <h2><i class="pi pi-briefcase"></i> {{ proj?.name }}</h2>
-      @if (proj?.code) { <p-chip [label]="proj!.code ?? ''" /> }
+      @if (proj?.code) { <p-chip [label]="proj!.code" /> }
       @if (isActive()) {
         <p-tag value="Actif" severity="success" icon="pi pi-check" />
       } @else {
         <p-tag value="Clôturé" severity="secondary" icon="pi pi-lock" />
       }
+<p-button icon="pi pi-lock" label="Accès" severity="warn" (onClick)="openAccess(folders()[0])" [text]="true" class="access-btn" />
     </div>
   </div>
 

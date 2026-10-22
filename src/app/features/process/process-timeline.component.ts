@@ -1,8 +1,8 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { DatePipe, NgClass } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
-import { AvatarModule } from 'primeng/avatar';
 import { BadgeModule } from 'primeng/badge';
 import { MessageService } from 'primeng/api';
 import { ProcessService } from '@app/core/services/process.service';
@@ -12,12 +12,12 @@ import { ProcessStepView, mapProcessStep, ProcessHeader, mapProcessHeader } from
   selector: 'app-process-timeline',
   standalone: true,
   styleUrl: './process-timeline.component.scss',
-  imports: [ButtonModule, TagModule, AvatarModule, BadgeModule],
+  imports: [ButtonModule, TagModule, BadgeModule, DatePipe, NgClass],
   template: `
     <section class="process-timeline">
-      @if (process()) {
+      @if (process(); as proc) {
         <header class="timeline-header">
-          <h2>{{ process().templateName }}</h2>
+          <h2>{{ proc.templateName }}</h2>
           <p-badge [severity]="statusSeverity()" [value]="statusLabel()"></p-badge>
         </header>
 
@@ -30,19 +30,25 @@ import { ProcessStepView, mapProcessStep, ProcessHeader, mapProcessHeader } from
                    'event-rejected': step.status === 'REJECTED'
                  }">
               <div class="timeline-dot">
-                <p-avatar [image]="dotIcon(step.status)" [style]="{ width: '40px', height: '40px' }"></p-avatar>
+                <i class="pi {{ dotIcon(step.status) }} timeline-dot-icon"></i>
               </div>
               <div class="timeline-content">
                 <h3>{{ step.stepName }}</h3>
-                <p-class>
-                  <span *ngIf="step.assigneeName">{{ step.assigneeName }} </span>
+                <p>
+                  @if (step.assigneeName) {
+                    <span>{{ step.assigneeName }} </span>
+                  }
                   a fait
-                  <span *ngIf="step.completedAt">{{ step.completedAt | date:'short' }}</span>
+                  @if (step.completedAt) {
+                    <span>{{ step.completedAt | date:'short' }}</span>
+                  }
                   {{ step.statusFrench }}
                 </p>
-                <p *ngIf="step.comment" class="timeline-comment">
-                  <i class="pi pi-comment"></i> {{ step.comment }}
-                </p>
+                @if (step.comment) {
+                  <p class="timeline-comment">
+                    <i class="pi pi-comment"></i> {{ step.comment }}
+                  </p>
+                }
               </div>
             </div>
           }
@@ -51,7 +57,7 @@ import { ProcessStepView, mapProcessStep, ProcessHeader, mapProcessHeader } from
           }
         </div>
       } @else {
-        <p-chips [value]="[]"></p-chips>
+        <p class="empty-timeline">Chargement...</p>
       }
     </section>
   `,
@@ -62,7 +68,7 @@ export class ProcessTimelineComponent implements OnInit {
   private msgs = inject(MessageService);
 
   processId = '';
-  process = signal<any>(null);
+  process = signal<ProcessHeader | null>(null);
   steps = signal<ProcessStepView[]>([]);
   loading = signal(true);
 
@@ -79,8 +85,14 @@ export class ProcessTimelineComponent implements OnInit {
     this.loading.set(true);
     this.processService.getTimeline(this.processId).subscribe({
       next: result => {
-        this.process.set(result?.process ?? null);
-        this.steps.set(result?.steps ?? []).sort((a, b) => (a.completedAt ?? '').localeCompare(b.completedAt ?? ''));
+        const backend = result?.process ?? null;
+        this.process.set(backend ? mapProcessHeader(backend) : null);
+        const steps = (result?.steps ?? []).slice().sort((a: ProcessStepView, b: ProcessStepView) => {
+          const da = a.completedAt ?? '';
+          const db = b.completedAt ?? '';
+          return da.localeCompare(db);
+        });
+        this.steps.set(steps);
         this.loading.set(false);
       },
       error: () => {
@@ -91,22 +103,35 @@ export class ProcessTimelineComponent implements OnInit {
   }
 
   statusSeverity = computed(() => {
-    const m: Record<'RUNNING' | 'COMPLETED' | 'REJECTED' | 'DRAFT', 'success' | 'danger' | 'warning' | 'secondary'> = {
-      RUNNING: 'warning',
+    const m: Record<'RUNNING' | 'COMPLETED' | 'REJECTED', 'success' | 'danger' | 'warn'> = {
       COMPLETED: 'success',
       REJECTED: 'danger',
-      DRAFT: 'secondary',
+      RUNNING: 'warn',
     };
-    return m[this.process()?.status ?? 'RUNNING'] ?? 'warning';
+    return m[this.statusKey()] ?? 'warn';
   });
 
   statusLabel = computed(() => {
-    const m: Record<'RUNNING' | 'COMPLETED' | 'REJECTED' | 'DRAFT', string> = {
-      RUNNING: 'En cours',
+    const m: Record<'RUNNING' | 'COMPLETED' | 'REJECTED', string> = {
       COMPLETED: 'Terminé',
       REJECTED: 'Refusé',
-      DRAFT: 'Brouillon',
+      RUNNING: 'En cours',
     };
-    return m[this.process()?.status ?? 'RUNNING'] ?? 'En cours';
+    return m[this.statusKey()] ?? 'En cours';
   });
+
+  /** Narrowed process status, safe to use as a record key. */
+  private statusKey(): 'RUNNING' | 'COMPLETED' | 'REJECTED' {
+    const status = this.process()?.status;
+    return status === 'COMPLETED' || status === 'REJECTED' ? status : 'RUNNING';
+  }
+
+  dotIcon(status: string): string {
+    switch (status) {
+      case 'DONE': return 'pi-check';
+      case 'PENDING': return 'pi-clock';
+      case 'REJECTED': return 'pi-times';
+      default: return 'pi-clock';
+    }
+  }
 }

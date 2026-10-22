@@ -1,5 +1,5 @@
-import { Component, OnInit, inject } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, OnInit, inject, signal } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { InputTextModule } from 'primeng/inputtext';
@@ -12,7 +12,7 @@ import { MyTask, ProcessHeader } from '@app/core/models/process.model';
   selector: 'app-start-process',
   standalone: true,
   styleUrl: './start-process.component.scss',
-  imports: [ButtonModule, InputTextModule, SelectModule],
+  imports: [ButtonModule, InputTextModule, SelectModule, ReactiveFormsModule],
   template: `
     <section class="start-process">
       <h2>Lancer approbation paiement</h2>
@@ -23,12 +23,12 @@ import { MyTask, ProcessHeader } from '@app/core/models/process.model';
         <form [formGroup]="form" (ngSubmit)="onSubmit()">
           <div class="form-group">
             <label>Projet</label>
-            <p-inputText formControlName="projectId" placeholder="ID du projet" />
+            <input pInputText formControlName="projectId" placeholder="ID du projet" />
           </div>
 
           <div class="form-group">
             <label>Objet (UUID)</label>
-            <p-inputText formControlName="subjectId" placeholder="UUID de l'objet" />
+            <input pInputText formControlName="subjectId" placeholder="UUID de l'objet" />
           </div>
 
           <div class="form-group">
@@ -37,8 +37,8 @@ import { MyTask, ProcessHeader } from '@app/core/models/process.model';
           </div>
 
           <div class="form-actions">
-            <button pButton type="submit" label="Lancer approbation" icon="pi pi-play" severity="success" [loading]="loading()" />
-            <button pButton type="button" label="Annuler" icon="pi pi-times" severity="secondary" (onClick)="cancel()" />
+            <button pButton type="submit" label="Lancer approbation" icon="pi pi-play" severity="success" [loading]="loading()"></button>
+            <button pButton type="button" label="Annuler" icon="pi pi-times" severity="secondary" (onClick)="cancel()"></button>
           </div>
         </form>
       }
@@ -53,7 +53,11 @@ export class StartProcessComponent implements OnInit {
   private msgs = inject(MessageService);
 
   loading = signal(false);
-  form: FormGroup;
+  form = this.fb.group({
+    projectId: [''],
+    subjectId: ['', Validators.required],
+    subjectType: ['PAYMENT_APPROVAL'],
+  });
   subjectOptions = [
     { label: 'Paiement à valider', value: 'PAYMENT_APPROVAL' },
     { label: 'Achat de matériel', value: 'MATERIAL_PURCHASE' },
@@ -61,12 +65,6 @@ export class StartProcessComponent implements OnInit {
   ];
 
   ngOnInit(): void {
-    this.form = this.fb.group({
-      projectId: [''],
-      subjectId: ['', Validators.required],
-      subjectType: ['PAYMENT_APPROVAL'],
-    });
-
     // Pre-fill with a fake UUID for testing if none provided
     const uuid = this.route.snapshot.queryParamMap.get('uuid');
     if (uuid) {
@@ -77,7 +75,11 @@ export class StartProcessComponent implements OnInit {
   onSubmit(): void {
     if (this.form.invalid) { return; }
     this.loading.set(true);
-    this.processService.start(this.form.value).subscribe({
+    this.processService.start({
+      projectId: this.form.get('projectId')?.value ?? undefined,
+      subjectId: this.form.get('subjectId')?.value ?? undefined,
+      subjectType: this.form.get('subjectType')?.value ?? undefined,
+    }).subscribe({
       next: (header: ProcessHeader) => {
         this.msgs.add({ severity: 'success', summary: 'Processus démarré', detail: `Processus ${header.statusLabel.toLowerCase()} ${header.templateName}` });
         this.loading.set(false);

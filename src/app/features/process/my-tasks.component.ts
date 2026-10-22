@@ -1,6 +1,6 @@
-import { Component, OnInit } from '@angular/core';
-import { signal, computed } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
+import { NgClass } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
@@ -8,14 +8,13 @@ import { TextareaModule } from 'primeng/textarea';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '@app/core/auth.service';
 import { ProcessService } from '@app/core/services/process.service';
-import { MyTask } from '@app/core/models/process.model';
-import { EmptyStateComponent } from '@app/shared/empty-state.component';
+import { MyTask, StepStatus } from '@app/core/models/process.model';
 
 @Component({
   selector: 'app-my-tasks',
   standalone: true,
   styleUrl: './my-tasks.component.scss',
-  imports: [RouterLink, ButtonModule, DialogModule, InputTextModule, TextareaModule, EmptyStateComponent],
+  imports: [ButtonModule, DialogModule, InputTextModule, TextareaModule, NgClass, FormsModule],
   template: `
     <section class="my-tasks">
       <header class="section-header">
@@ -46,7 +45,7 @@ import { EmptyStateComponent } from '@app/shared/empty-state.component';
                         [outlined]="true"
                         (onClick)="validate(task.stepInstanceId)"
                         class="btn-validate"
-                  />
+                  ></button>
                   <button pButton
                         label="Rejeter"
                         icon="pi pi-close"
@@ -55,7 +54,7 @@ import { EmptyStateComponent } from '@app/shared/empty-state.component';
                         [outlined]="true"
                         (onClick)="openRejectDialog(task)"
                         class="btn-reject"
-                  />
+                  ></button>
                 } @else {
                   <span class="status-badge"
                         [ngClass]="{
@@ -93,14 +92,14 @@ export class MyTasksComponent implements OnInit {
     return tasks;
   });
 
-  taskStatusFrench = computed<string>(() => {
+  taskStatusFrench = (status: StepStatus) => {
     const m: Record<'DONE' | 'PENDING' | 'REJECTED', string> = {
       DONE: 'Terminé',
       PENDING: 'En attente de vous',
       REJECTED: 'Refusé',
     };
-    return m[this.visibleTasks().length > 0 ? this.visibleTasks()[0]?.status ?? 'PENDING' : 'PENDING'];
-  });
+    return m[status] ?? status;
+  };
 
   ngOnInit(): void {
     this.loading.set(true);
@@ -117,14 +116,13 @@ export class MyTasksComponent implements OnInit {
     });
   }
 
-  canAct = computed<boolean>(() => {
-    const me = this.auth.me();
-    if (!me) return false;
-    return this.visibleTasks().some(t => t.status === 'PENDING');
-  });
+  canAct(task: MyTask): boolean {
+    return task.status === 'PENDING';
+  }
 
   validate(stepInstanceId: string): void {
-    this.processService.complete('', stepInstanceId, {}).subscribe({
+    const task = this.allTasks().find(t => t.stepInstanceId === stepInstanceId);
+    this.processService.complete(task?.processId ?? '', stepInstanceId, {}).subscribe({
       next: () => {
         this.msgs.add({ severity: 'success', summary: 'Validé' });
         this.allTasks.set([]); // refresh list
@@ -134,14 +132,14 @@ export class MyTasksComponent implements OnInit {
   }
 
   openRejectDialog(task: MyTask): void {
-    // TODO: wire a proper dialog with required comment input
-    // For now, attempt reject with empty comment – server will reject if comment required
-    this.processService.reject('', task.stepInstanceId, '').subscribe({
+    const comment = prompt('Commentaire pour le rejet :');
+    if (comment === null) return; // user cancelled
+    this.processService.reject(task.processId, task.stepInstanceId, comment).subscribe({
       next: () => {
         this.msgs.add({ severity: 'success', summary: 'Rejeté' });
-        this.allTasks.set([]); // refresh list
+        this.allTasks.set([]);
       },
-      error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Commentaire requis pour le rejet' }),
+      error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Échec du rejet' }),
     });
   }
 }

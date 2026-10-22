@@ -1,12 +1,18 @@
-import { Component, Input } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ButtonModule } from 'primeng/button';
 
 @Component({
+
   selector: 'app-empty-state',
   standalone: true,
+  imports: [ButtonModule],
   template: `
     <div class="empty-state">
       <i class="pi {{ icon }}"></i>
       <p>{{ message }}</p>
+      @if (buttonLabel) {
+        <p-button [label]="buttonLabel" (onClick)="buttonAction.emit()" />
+      }
       <ng-content />
     </div>
   `,
@@ -20,4 +26,6 @@ import { Component, Input } from '@angular/core';
 export class EmptyStateComponent {
   @Input({ required: true }) icon!: string;
   @Input({ required: true }) message!: string;
+  @Input() buttonLabel = '';
+  @Output() buttonAction = new EventEmitter<void>();
 }

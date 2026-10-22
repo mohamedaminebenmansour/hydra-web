@@ -40,7 +40,10 @@ export class ProcessService {
    */
   myTasks(): Observable<MyTask[]> {
     return this.http.get<AnyRaw>('/api/processes/my-tasks').pipe(
-      map(raw => (raw?.tasks ?? raw ?? []).map(mapMyTask)),
+      map(raw => {
+        const tasks = raw?.['tasks'] ?? (Array.isArray(raw) ? raw : []);
+        return (Array.isArray(tasks) ? tasks : []).map(mapMyTask);
+      }),
       catchError(() => of([]))
     );
   }
@@ -50,13 +53,16 @@ export class ProcessService {
    */
   getTimeline(processId: string): Observable<{ process: ProcessHeader; steps: ProcessStepView[] }> {
     return this.http.get<AnyRaw>(`/api/processes/${processId}/timeline`).pipe(
-      map(raw => ({
-        process: mapProcessHeader(raw?.process ?? raw),
-        steps: (raw?.steps ?? raw?.steps ?? []).map(mapProcessStep),
-      })),
+      map(raw => {
+        const instance = raw?.['instance'] ?? raw?.['process'] ?? null;
+        return {
+          process: instance ? mapProcessHeader(instance) : { ...EMPTY_HEADER },
+          steps: (raw?.['steps'] ?? []).map(mapProcessStep),
+        };
+      }),
       catchError(err => {
         this.msgs.add({ severity: 'error', summary: 'Erreur', detail: err.error?.message ?? 'Impossible de charger leTimeline' });
-        return of({ process: { status: 'REJECTED', templateName: '', statusLabel: 'Refusé', startedAt: null }, steps: [] });
+        return of({ process: { ...EMPTY_HEADER }, steps: [] });
       })
     );
   }
@@ -66,7 +72,7 @@ export class ProcessService {
    */
   complete(processId: string, stepInstanceId: string, body: { comment?: string } = {}): Observable<{ stepInstanceId: string; newStatus: string }> {
     return this.http.post<AnyRaw>(`/api/processes/${processId}/steps/${stepInstanceId}/complete`, body).pipe(
-      map(raw => ({ stepInstanceId, newStatus: raw?.newStatus ?? raw?.status ?? 'COMPLETED' })),
+      map(raw => ({ stepInstanceId, newStatus: raw?.['newStatus'] ?? raw?.['status'] ?? 'COMPLETED' })),
       catchError(err => {
         this.msgs.add({ severity: 'error', summary: 'Erreur', detail: err.error?.message ?? 'Impossible de valider l\'étape' });
         return of({ stepInstanceId, newStatus: 'ERROR' });
@@ -79,7 +85,7 @@ export class ProcessService {
    */
   reject(processId: string, stepInstanceId: string, comment: string): Observable<{ stepInstanceId: string; newStatus: string }> {
     return this.http.post<AnyRaw>(`/api/processes/${processId}/steps/${stepInstanceId}/reject`, { comment }).pipe(
-      map(raw => ({ stepInstanceId, newStatus: raw?.newStatus ?? raw?.status ?? 'REJECTED' })),
+      map(raw => ({ stepInstanceId, newStatus: raw?.['newStatus'] ?? raw?.['status'] ?? 'REJECTED' })),
       catchError(err => {
         this.msgs.add({ severity: 'error', summary: 'Erreur', detail: err.error?.message ?? 'Impossible de rejeter l\'étape' });
         return of({ stepInstanceId, newStatus: 'ERROR' });
@@ -87,6 +93,14 @@ export class ProcessService {
     );
   }
 }
+
+/** Fallback header used when the backend returns no process payload. */
+const EMPTY_HEADER: ProcessHeader = {
+  status: 'REJECTED',
+  templateName: '',
+  statusLabel: 'Refusé',
+  startedAt: null,
+};
 
 /** Helper: accept any raw JSON from the backend; we defensively map known keys. */
 interface AnyRaw {

@@ -11,6 +11,8 @@ export interface ProcessStepView {
   completedAt: string | null;
   /** Optional comment left on reject */
   comment: string | null;
+  /** French status label */
+  statusFrench: string;
 }
 
 export interface ProcessTimelineEvent extends ProcessStepView {
@@ -51,14 +53,27 @@ export interface ProcessHeader {
  *  - POST /steps/{id}/complete → { stepInstanceId, newStatus }
  *  - POST /steps/{id}/reject   → { stepInstanceId, newStatus, comment }
  */
+export type StepStatus = 'DONE' | 'PENDING' | 'REJECTED';
+
 export function mapProcessStep(raw: any): ProcessStepView {
+  const rawStatus = String(raw?.status ?? raw?.step_status ?? 'PENDING').toUpperCase();
+  const status: StepStatus =
+    rawStatus === 'DONE' || rawStatus === 'REJECTED' ? rawStatus : 'PENDING';
+
+  const m: Record<StepStatus, string> = {
+    DONE: 'Terminé',
+    PENDING: 'En attente de vous',
+    REJECTED: 'Refusé',
+  };
+
   return {
-    stepInstanceId: raw?.stepInstanceId ?? raw?.step_instance_id ?? raw?.id ?? '',
-    stepName: raw?.stepName ?? raw?.step_name ?? raw?.subject ?? 'Étape inconnue',
-    status: (raw?.status ?? raw?.step_status ?? 'PENDING') as 'DONE' | 'PENDING' | 'REJECTED',
-    assigneeName: raw?.assigneeName ?? raw?.assignee ?? raw?.createdByName ?? raw?.created_by ?? '',
-    completedAt: raw?.completedAt ?? raw?.completed_at ?? raw?.createdAt ?? raw?.created_at ?? null,
-    comment: raw?.comment ?? raw?.commentaire ?? null,
+    stepInstanceId: String(raw?.stepInstanceId ?? raw?.step_instance_id ?? raw?.id ?? ''),
+    stepName: String(raw?.stepName ?? raw?.name ?? raw?.step_name ?? 'Étape'),
+    status,
+    assigneeName: String(raw?.assigneeName ?? raw?.assigneeUserEmail ?? raw?.assignee ?? ''),
+    completedAt: raw?.completedAt ?? raw?.completed_at ?? null,
+    comment: raw?.comment ?? null,
+    statusFrench: m[status],
   };
 }
 
