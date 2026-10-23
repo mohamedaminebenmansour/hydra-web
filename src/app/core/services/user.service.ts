@@ -36,10 +36,4 @@ export class UserService {
   setActive(id: string, active: boolean): Observable<UserDto> {
     return this.http.post<UserDto>(`/api/users/${id}/${active ? 'activate' : 'deactivate'}`, {});
   }
-
-  /** GET /api/users/roles/options — lightweight role options. */
-  roleOptions(projectId?: string): Observable<{ code: string; label: string }[]> {
-    const url = projectId ? `/api/users/roles/options?projectId=${projectId}` : '/api/users/roles/options';
-    return this.http.get<{ code: string; label: string }[]>(url);
-  }
 }

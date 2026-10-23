@@ -155,6 +155,8 @@ export class AuditComponent implements OnInit {
 
   apply(): void {
     let params = new HttpParams();
+    params = params.set('page', '0');
+    params = params.set('size', '50');
     if (this.userId) {
       params = params.set('userId', this.userId);
     }
