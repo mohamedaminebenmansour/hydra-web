@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
+import { RouterLink } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError, first, map } from 'rxjs/operators';
 import { InputTextModule } from 'primeng/inputtext';
@@ -12,11 +13,14 @@ import { DialogModule } from 'primeng/dialog';
 import { TagModule } from 'primeng/tag';
 import { ChipModule } from 'primeng/chip';
 import { BadgeModule } from 'primeng/badge';
+import { CardModule } from 'primeng/card';
 import { TooltipModule } from 'primeng/tooltip';
 import { MessageService } from 'primeng/api';
 import { AuthService } from '@app/core/auth.service';
 import { PERM } from '@app/core/permissions';
 import { ProjectService } from '@app/core/services/project.service';
+import { ProcessService } from '@app/core/services/process.service';
+import { MyTask } from '@app/core/models/process.model';
 import { FolderAccessService } from '@app/core/services/folder-access.service';
 import { UserService } from '@app/core/services/user.service';
 import {
@@ -41,7 +45,9 @@ import { FolderAccessDialogComponent } from './folder-access-dialog.component';
     TagModule,
     ChipModule,
     BadgeModule,
+    CardModule,
     TooltipModule,
+    RouterLink,
     EmptyStateComponent,
     FolderAccessDialogComponent
   ],
@@ -50,6 +56,7 @@ import { FolderAccessDialogComponent } from './folder-access-dialog.component';
 })
 export class ProjectDetailComponent implements OnInit {
   private projectService = inject(ProjectService);
+  private processService = inject(ProcessService);
   private folderAccessService = inject(FolderAccessService);
   private userService = inject(UserService);
   private route = inject(ActivatedRoute);
@@ -65,8 +72,10 @@ export class ProjectDetailComponent implements OnInit {
 
   loading = signal(true);
   notFound = signal(false);
+  processesLoading = signal(false);
   projectId: string | null = null;
   activeTab = signal<string | number>('0');
+  processes = signal<MyTask[]>([]);
 
   readonly roleOpts = PROJECT_ROLE_OPTS;
 
@@ -144,6 +153,8 @@ export class ProjectDetailComponent implements OnInit {
     this.loading.set(false);
 
     if (this.canManage()) { this.loadMemberOptions(); }
+
+    this.loadProcesses();
   }
 
   private loadMemberOptions(): void {
@@ -161,6 +172,15 @@ export class ProjectDetailComponent implements OnInit {
 
   roleLabel(r: string | null | undefined): string {
     return r ? (PROJECT_ROLE_LABELS[r] ?? r) : '—';
+  }
+
+  taskStatusFrench(status: string): string {
+    const m: Record<string, string> = {
+      PENDING: 'En attente',
+      DONE: 'Terminé',
+      REJECTED: 'Refusé',
+    };
+    return m[status] ?? status;
   }
 
   roleSeverity(r: string | null | undefined): 'success' | 'info' | 'secondary' {
@@ -313,4 +333,21 @@ export class ProjectDetailComponent implements OnInit {
     this.loadFolderAccessCounts();
   }
 
+  /** Load processes for this project (graceful 404 -> empty list). */
+  loadProcesses(): void {
+    if (!this.projectId) { return; }
+    this.processesLoading.set(true);
+    this.processService.listByProject(this.projectId).subscribe({
+      next: (list) => this.processes.set(list ?? []),
+      error: () => this.processes.set([]),
+      complete: () => this.processesLoading.set(false),
+    });
+  }
+
+  /** Start a new process for this project. */
+  startProcess(): void {
+    this.router.navigate(['/processes/start'], {
+      queryParams: { projectId: this.projectId },
+    });
+  }
 }

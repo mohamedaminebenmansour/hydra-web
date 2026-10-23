@@ -38,6 +38,40 @@
     }
   </div>
 
+  @if (projectId) {
+    <div class="processus-card">
+      <p-card header="Processus" subheader="Suivre les processus de ce chantier">
+        <ng-template pTemplate="header">
+          <div class="processus-header">
+            <span>Processus</span>
+            <p-button label="Démarrer" icon="pi pi-play" severity="success"
+                      (onClick)="startProcess()" [disabled]="processesLoading()" />
+          </div>
+        </ng-template>
+        @if (processesLoading()) {
+          <div class="processus-loading">Chargement…</div>
+        } @else if (processes().length === 0) {
+          <div class="processus-empty">
+            <i class="pi pi-sitemap"></i>
+            <p>Aucun processus pour ce chantier</p>
+          </div>
+        } @else {
+          <ul class="processus-list">
+            @for (p of processes(); track p.stepInstanceId) {
+              <li class="processus-item">
+                <span class="processus-name">{{ p.processName }}</span>
+                <span class="processus-step">{{ p.stepName }}</span>
+                <p-tag [value]="taskStatusFrench(p.status)"
+                       [severity]="p.status === 'PENDING' ? 'warn' : p.status === 'DONE' ? 'success' : 'danger'"/>
+                <a [routerLink]="['/processes', p.processId]" class="processus-link">Voir</a>
+              </li>
+            }
+          </ul>
+        }
+      </p-card>
+    </div>
+  }
+
   <p-tabs [value]="activeTab()" (valueChange)="activeTab.set($event)">
     <p-tablist>
       <p-tab value="0">Équipe</p-tab>

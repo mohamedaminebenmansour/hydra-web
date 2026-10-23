@@ -6,6 +6,8 @@ import {
   ProcessStepView,
   MyTask,
   ProcessHeader,
+  ProcessTemplate,
+  PROCESS_TEMPLATES,
   mapProcessStep,
   mapMyTask,
   mapProcessHeader,
@@ -130,5 +132,25 @@ export class ProcessService {
           return of({ stepInstanceId, newStatus: 'ERROR' });
         })
       );
+  }
+
+  /** GET /api/projects/{projectId}/processes — returns [] on 404 so UI can hide gracefully. */
+  listByProject(projectId: string): Observable<MyTask[]> {
+    return this.http
+      .get<AnyRaw>(`/api/projects/${projectId}/processes`)
+      .pipe(
+        map(raw => {
+          const list = Array.isArray(raw) ? raw : (raw?.['processes'] ?? []);
+          return (Array.isArray(list) ? list : []).map(mapMyTask);
+        }),
+        catchError(() => of([]))
+      );
+  }
+
+  /** GET /api/processes/templates — falls back to hardcoded PAYMENT_APPROVAL on 404. */
+  listTemplates(): Observable<ProcessTemplate[]> {
+    return this.http.get<ProcessTemplate[]>('/api/processes/templates').pipe(
+      catchError(() => of(PROCESS_TEMPLATES))
+    );
   }
 }

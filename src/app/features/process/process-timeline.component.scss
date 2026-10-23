@@ -45,6 +45,37 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.timeline-dot::after {
+  content: '';
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  width: 2px;
+  height: calc(100% + 20px);
+  background: #e2e8f0;
+  transform: translateX(-50%);
+  z-index: -1;
+}
+
+.timeline-dot i {
+  font-size: 16px;
+}
+
+.timeline-dot.event-done { background: #10b981; color: #fff; }
+.timeline-dot.event-current { background: #f59e0b; color: #fff; }
+.timeline-dot.event-rejected { background: #ef4444; color: #fff; }
+
+.timeline-dot.event-done::after { background: #10b981; }
+.timeline-dot.event-current::after { background: #f59e0b; }
+.timeline-dot.event-rejected::after { background: #ef4444; }
+
+.timeline-event:last-child .timeline-dot::after { display: none; }
+
+.timeline-dot-icon {
+  pointer-events: none;
 }
 
 .timeline-dot p-avatar {

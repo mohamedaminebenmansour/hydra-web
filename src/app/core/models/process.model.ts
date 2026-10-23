@@ -74,6 +74,23 @@ const PROCESS_STATUS_LABELS: Record<ProcessStatus, string> = {
   DRAFT: 'Brouillon',
 };
 
+/** Process template definition used by start page and hub cards. */
+export interface ProcessTemplate {
+  /** Backend template key (e.g. PAYMENT_APPROVAL) */
+  key: string;
+  /** Human-readable label */
+  name: string;
+  /** PrimeNG icon class (without pi- prefix) */
+  icon: string;
+}
+
+/** Default templates – used as fallback when /api/processes/templates 404s. */
+export const PROCESS_TEMPLATES: ProcessTemplate[] = [
+  { key: 'PAYMENT_APPROVAL', name: 'Approbation de paiement', icon: 'pi-wallet' },
+  { key: 'MATERIAL_PURCHASE',  name: 'Achat de matériel',     icon: 'pi-shopping-cart' },
+  { key: 'SUBCONTRACT_APPROVAL', name: 'Sous-traitance',      icon: 'pi-users' },
+];
+
 export function mapProcessStep(raw: any): ProcessStepView {
   const rawStatus = String(raw?.status ?? raw?.step_status ?? 'PENDING').toUpperCase();
   const status: StepStatus =

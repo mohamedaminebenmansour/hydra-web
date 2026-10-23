@@ -2,45 +2,37 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
-import { InputTextModule } from 'primeng/inputtext';
+import { ChipModule } from 'primeng/chip';
 import { SelectModule } from 'primeng/select';
 import { MessageService } from 'primeng/api';
 import { ProcessService } from '@app/core/services/process.service';
-import { ProcessHeader } from '@app/core/models/process.model';
+import { ProcessHeader, ProcessTemplate } from '@app/core/models/process.model';
 
 @Component({
   selector: 'app-start-process',
   standalone: true,
   styleUrl: './start-process.component.scss',
-  imports: [ButtonModule, InputTextModule, SelectModule, ReactiveFormsModule],
+  imports: [ButtonModule, ChipModule, SelectModule, ReactiveFormsModule],
   template: `
     <section class="start-process">
-      <h2>Lancer approbation paiement</h2>
+      <h2>Lancer un processus</h2>
 
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
         <div class="form-group">
           <label>Projet</label>
-          <input pInputText formControlName="projectId" placeholder="ID du projet" />
-        </div>
-
-        <div class="form-group">
-          <label>Objet (UUID)</label>
-          <input pInputText formControlName="subjectId" placeholder="UUID de l'objet" />
-        </div>
-
-        <div class="form-group">
-          <label>Type d'objet</label>
-          <p-select [options]="subjectOptions" formControlName="subjectType" placeholder="Sélectionner"></p-select>
+          <p-chip [label]="projectIdChip()" [removable]="false" />
         </div>
 
         <div class="form-group">
           <label>Modèle de processus</label>
-          <p-select [options]="templateOptions" formControlName="templateKey" placeholder="Sélectionner"></p-select>
+          <p-select [options]="templateOptions" formControlName="templateKey" placeholder="Sélectionner" />
         </div>
 
         <div class="form-actions">
-          <button pButton type="submit" label="Lancer approbation" icon="pi pi-play" severity="success" [loading]="submitting()"></button>
-          <button pButton type="button" label="Annuler" icon="pi pi-times" severity="secondary" (onClick)="cancel()"></button>
+          <button pButton type="submit" label="Lancer" icon="pi pi-play" severity="success"
+                  [loading]="submitting()" [disabled]="form.invalid"></button>
+          <button pButton type="button" label="Annuler" icon="pi pi-times" severity="secondary"
+                  (onClick)="cancel()"></button>
         </div>
       </form>
     </section>
@@ -54,34 +46,52 @@ export class StartProcessComponent implements OnInit {
   private msgs = inject(MessageService);
 
   submitting = signal(false);
+  templates = signal<ProcessTemplate[]>([]);
 
   form = this.fb.nonNullable.group({
-    projectId: ['', Validators.required],
+    projectId: [''],
     subjectId: ['', Validators.required],
     subjectType: ['PAYMENT'],
     templateKey: ['PAYMENT_APPROVAL'],
   });
 
-  /** Backend subject types (e.g. PAYMENT). */
-  subjectOptions = [
-    { label: 'Paiement', value: 'PAYMENT' },
-    { label: 'Achat de matériel', value: 'MATERIAL' },
-    { label: 'Sous-traitance', value: 'SUBCONTRACT' },
-  ];
-
-  /** Backend process templates. */
-  templateOptions = [
-    { label: 'Approbation de paiement', value: 'PAYMENT_APPROVAL' },
-    { label: 'Achat de matériel', value: 'MATERIAL_PURCHASE' },
-    { label: 'Sous-traitance', value: 'SUBCONTRACT_APPROVAL' },
-  ];
-
   ngOnInit(): void {
-    // Pre-fill the subject with a UUID passed as a query param (if any).
-    const uuid = this.route.snapshot.queryParamMap.get('uuid');
-    if (uuid) {
-      this.form.controls.subjectId.setValue(uuid);
+    const projectId = this.route.snapshot.queryParamMap.get('projectId') || '';
+    const template = this.route.snapshot.queryParamMap.get('template') || '';
+
+    // Hidden subjectId: random UUID
+    this.form.controls.subjectId.setValue(crypto.randomUUID());
+
+    if (projectId) {
+      this.form.controls.projectId.setValue(projectId);
     }
+    if (template && this.templateOptions.some(t => t.value === template)) {
+      this.form.controls.templateKey.setValue(template);
+    }
+
+    this.loadTemplates();
+  }
+
+  projectIdChip = (): string => {
+    const id = this.form.controls.projectId.value;
+    return id ? `Projet #${id}` : 'Aucun projet sélectionné';
+  };
+
+  readonly templateOptions = [
+    { label: 'Approbation de paiement', value: 'PAYMENT_APPROVAL', icon: 'pi-wallet' },
+    { label: 'Achat de matériel', value: 'MATERIAL_PURCHASE', icon: 'pi-shopping-cart' },
+    { label: 'Sous-traitance', value: 'SUBCONTRACT_APPROVAL', icon: 'pi-users' },
+  ];
+
+  private loadTemplates(): void {
+    this.processService.listTemplates().subscribe({
+      next: (list) => {
+        if (list?.length) {
+          this.templates.set(list);
+        }
+      },
+      error: () => { /* keep defaults */ },
+    });
   }
 
   onSubmit(): void {
@@ -100,7 +110,6 @@ export class StartProcessComponent implements OnInit {
           summary: 'Processus démarré',
           detail: `Processus ${header.statusLabel.toLowerCase()} — ${header.templateName}`,
         });
-        // Navigate to the timeline using the process instance id.
         const id = header.id;
         if (id) {
           this.router.navigate(['/processes', id]);

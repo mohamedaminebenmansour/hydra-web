@@ -2,7 +2,18 @@
   display: block;
 }
 
-.start-process { padding: 24px; max-width: 600px; margin: 0 auto; }
+.start-process {
+  padding: 24px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.start-process h2 {
+  margin-top: 0;
+  font-size: 24px;
+  color: #1e293b;
+  margin-bottom: 24px;
+}
 
 .form-group {
   margin-bottom: 24px;
@@ -15,7 +26,6 @@
   color: #3f3f3f;
 }
 
-.form-group p-inputtext,
 .form-group p-select {
   width: 100%;
 }
