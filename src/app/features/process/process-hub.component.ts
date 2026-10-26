@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+﻿import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -12,47 +12,47 @@ import { ProcessTemplate, PROCESS_TEMPLATES } from '@app/core/models/process.mod
   styleUrl: './process-hub.component.scss',
   imports: [ButtonModule, CardModule],
   template: `
-    <section class="process-hub">
+    <section class="process-hub proc-bg">
       <header class="hub-header">
         <h1><i class="pi pi-sitemap"></i> Processus</h1>
-        <p>Démarrez et suivez vos processus métiers depuis un seul endroit.</p>
+        <p>D\u00e9marrez et suivez vos processus m\u00e9tiers depuis un seul endroit.</p>
       </header>
 
       <div class="hub-actions">
-        <p-card header="Mes tâches" subheader="Tâches en attente de votre validation">
-          <p>Consultez vos tâches à valider ou rejeter.</p>
-          <p-button label="Voir mes tâches" icon="pi pi-check-square" routerLink="/mes-taches" />
+        <p-card header="Mes t\u00e2ches" subheader="T\u00e2ches en attente de votre validation">
+          <p>Consultez vos t\u00e2ches \u00e0 valider ou rejeter.</p>
+          <p-button label="Voir mes t\u00e2ches" icon="pi pi-check-square" routerLink="/mes-taches" />
         </p-card>
 
-        <p-card header="Nouveau processus" subheader="Lancer un processus métier">
-          <p>Sélectionnez un modèle et démarrez un nouveau processus.</p>
+        <p-card header="Nouveau processus" subheader="Lancer un processus m\u00e9tier">
+          <p>S\u00e9lectionnez un mod\u00e8le et d\u00e9marrez un nouveau processus.</p>
           <p-button label="Lancer un processus" icon="pi pi-play" routerLink="/processes/start" />
         </p-card>
       </div>
 
       <div class="hub-how">
-        <h2>Comment ça marche</h2>
+        <h2>Comment \u00e7a marche</h2>
         <div class="steps">
           <div class="step">
             <div class="step-number">1</div>
-            <div class="step-label">Créer</div>
-            <div class="step-desc">Démarrez un processus depuis un modèle.</div>
+            <div class="step-label">Cr\u00e9er</div>
+            <div class="step-desc">D\u00e9marrez un processus depuis un mod\u00e8le.</div>
           </div>
           <div class="step">
             <div class="step-number">2</div>
-            <div class="step-label">Exécuter</div>
-            <div class="step-desc">Les étapes se créent automatiquement pour les acteurs concernés.</div>
+            <div class="step-label">Ex\u00e9cuter</div>
+            <div class="step-desc">Les \u00e9tapes se cr\u00e9ent automatiquement pour les acteurs concern\u00e9s.</div>
           </div>
           <div class="step">
             <div class="step-number">3</div>
             <div class="step-label">Suivre</div>
-            <div class="step-desc">Consultez l'état d'avancement depuis la timeline.</div>
+            <div class="step-desc">Consultez l\u2019\u00e9tat d\u2019avancement depuis la timeline.</div>
           </div>
         </div>
       </div>
 
       <div class="hub-templates">
-        <h2>Modèles disponibles</h2>
+        <h2>Mod\u00e8les disponibles</h2>
         <div class="template-grid">
           @for (tpl of templates(); track tpl.key) {
             <div class="template-card">
@@ -65,7 +65,7 @@ import { ProcessTemplate, PROCESS_TEMPLATES } from '@app/core/models/process.mod
                         (onClick)="startTemplate(tpl.key)" />
             </div>
           } @empty {
-            <div class="empty-state">Aucun modèle disponible</div>
+            <div class="empty-state">Aucun mod\u00e8le disponible</div>
           }
         </div>
       </div>

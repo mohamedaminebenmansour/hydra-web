@@ -1,4 +1,4 @@
-@if (notFound()) {
+﻿@if (notFound()) {
   <app-empty-state icon="pi pi-exclamation-triangle" message="Chantier introuvable ou accès refusé."></app-empty-state>
 } @else if (loading()) {
   <div class="loading"><i class="pi pi-spin pi-spinner"></i> Chargement…</div>
@@ -14,7 +14,7 @@
       } @else {
         <p-tag value="Clôturé" severity="secondary" icon="pi pi-lock" />
       }
-<p-button icon="pi pi-lock" label="Accès" severity="warn" (onClick)="openAccess(folders()[0])" [text]="true" class="access-btn" />
+      <p-button icon="pi pi-lock" label="Accès" severity="warn" (onClick)="openAccess(folders()[0])" [text]="true" class="access-btn" />
     </div>
   </div>
 
@@ -46,6 +46,8 @@
             <span>Processus</span>
             <p-button label="Démarrer" icon="pi pi-play" severity="success"
                       (onClick)="startProcess()" [disabled]="processesLoading()" />
+            <p-button label="Valider un paiement" icon="pi pi-wallet" severity="warn"
+                      (onClick)="startPaymentApproval()" [disabled]="processesLoading()" class="pay-btn" />
           </div>
         </ng-template>
         @if (processesLoading()) {
@@ -59,11 +61,11 @@
           <ul class="processus-list">
             @for (p of processes(); track p.stepInstanceId) {
               <li class="processus-item">
-                <span class="processus-name">{{ p.processName }}</span>
+                <span class="processus-name">{{ p.projectName || p.templateName || 'Processus' }}</span>
                 <span class="processus-step">{{ p.stepName }}</span>
                 <p-tag [value]="taskStatusFrench(p.status)"
                        [severity]="p.status === 'PENDING' ? 'warn' : p.status === 'DONE' ? 'success' : 'danger'"/>
-                <a [routerLink]="['/processes', p.processId]" class="processus-link">Voir</a>
+                <a [routerLink]="['/processes', p.instanceId]" class="processus-link">Voir</a>
               </li>
             }
           </ul>
@@ -78,184 +80,135 @@
       <p-tab value="1">Dossiers</p-tab>
     </p-tablist>
     <p-tabpanels>
-
       <p-tabpanel value="0">
         <div class="panel">
           <p class="note">
             <i class="pi pi-info-circle"></i>
             Seules ces personnes voient ce chantier (sauf propriétaire).
           </p>
-
-          @if (canManage()) {
-            <div class="panel-actions">
-              <p-button icon="pi pi-user-plus" label="Ajouter un membre"
-                        (onClick)="openAdd()" />
-            </div>
-          }
-
-          @if (members().length) {
+          <div class="member-grid">
             @for (m of members(); track m.userId) {
-              <div class="mrow">
-                <div class="mleft">
-                  <div class="mname">
-                    {{ m.fullName }}
-                    <p-tag [value]="roleLabel(m.projectRole)" [severity]="roleSeverity(m.projectRole)" />
-                    @if (m.canUpload) {
-                      <span class="upload" title="Peut téléverser"><i class="pi pi-upload"></i></span>
-                    }
-                  </div>
-                  @if (m.email) { <div class="memail">{{ m.email }}</div> }
+              <div class="member-card">
+                <div class="member-info">
+                  <div class="member-name">{{ m.fullName }}</div>
+                  <div class="member-email">{{ m.email }}</div>
                 </div>
-                @if (canManage()) {
-                  <div class="mright">
-                    <p-button icon="pi pi-pencil" [rounded]="true" [text]="true"
-                              (onClick)="openEdit(m)" [attr.aria-label]="'Modifier ' + m.fullName" />
-                    <p-button icon="pi pi-trash" [rounded]="true" [text]="true" severity="danger"
-                              (onClick)="confirmRemove(m)" [attr.aria-label]="'Retirer ' + m.fullName" />
-                  </div>
-                }
+                <div class="member-role">
+                  <p-button [label]="m.projectRole" [disabled]="true" [text]="true" />
+                </div>
+                <div class="member-actions">
+                  <p-button icon="pi pi-pencil" [text]="true" (onClick)="openEdit(m)" />
+                  <p-button icon="pi pi-trash" severity="danger" [text]="true" (onClick)="confirmRemove(m)" />
+                </div>
               </div>
+            } @empty {
+              <div class="empty-state">Aucun membre</div>
             }
-          } @else {
-            <app-empty-state icon="pi pi-users"
-              message="Aucun membre pour le moment."></app-empty-state>
-          }
+          </div>
         </div>
       </p-tabpanel>
-
-
       <p-tabpanel value="1">
         <div class="panel">
-          @if (folders().length) {
-            <div class="fgrid">
-              @for (f of folders(); track f.id) {
-                <div class="fcard" (click)="openFolder(f)" role="button" tabindex="0"
-                     [attr.aria-label]="'Ouvrir le dossier ' + f.name"
-                     (keyup.enter)="openFolder(f)">
-                  <div class="ftop">
-                    <i class="pi pi-folder ficon"></i>
-                    <span class="fname">{{ f.name }}</span>
-                    @if (canConfigureProject()) {
-                      <p-button icon="pi pi-lock" [rounded]="true" [text]="true"
-                                (click)="openAccess(f); $event.stopPropagation()"
-                                pTooltip="Configurer les accès" />
-                    }
-                  </div>
-                  <div class="fmeta">
-                    @if (f.code) { <span class="fcode">{{ f.code }}</span> }
-                    <p-badge [value]="badgeCount(f.id) + ' accès'" />
-                  </div>
-                </div>
-              }
-            </div>
+          <h3>Dossiers</h3>
+          @if (folders().length === 0) {
+            <div class="empty-state">Aucun dossier</div>
           } @else {
-            <app-empty-state icon="pi pi-folder"
-              message="Aucun dossier pour le moment."></app-empty-state>
+            <ul class="folder-list">
+              @for (f of folders(); track f.id) {
+                <li class="folder-item">
+                  <span class="folder-name">{{ f.name }}</span>
+                  <span class="folder-count">{{ badgeCount(f.id) }} accès</span>
+                  <p-button icon="pi pi-lock" label="Accès" [text]="true" (onClick)="openAccess(f)" />
+                </li>
+              }
+            </ul>
           }
-          <p class="note note-docs">
-            <i class="pi pi-info-circle"></i>
-            Cliquez sur un dossier pour consulter ses documents.
-          </p>
+          <p-button label="Ajouter un dossier" icon="pi pi-plus" (onClick)="addFolder()" />
         </div>
       </p-tabpanel>
-
     </p-tabpanels>
   </p-tabs>
-}
 
-<p-dialog [(visible)]="showAddDialog" [modal]="true" [style]="{ width: '480px' }"
-          [styleClass]="'full-dialog'" header="Ajouter un membre">
-  <div class="dlg-form">
-    @if (selectedAddUser()) {
-      <div class="add-chip">
-        <i class="pi pi-user add-chip-icon"></i>
-        <span class="add-chip-name">{{ selectedAddUser()!.name }}</span>
-        @if (selectedAddUser()!.email && selectedAddUser()!.email !== selectedAddUser()!.name) {
-          <span class="add-chip-email">{{ selectedAddUser()!.email }}</span>
-        }
-        <button class="add-chip-remove" type="button" (click)="addUserId = null" aria-label="Retirer">
-          <i class="pi pi-times"></i>
-        </button>
-      </div>
-    }
-    <div class="field">
-      <label>Utilisateur</label>
-      <input pInputText class="inp" placeholder="Rechercher nom ou email"
-             [(ngModel)]="addFilter" />
-    </div>
-    <div class="user-list">
-      @for (u of filteredUsers(); track u.value) {
-        <div class="user-row" [class.selected]="addUserId === u.value"
-             role="button" tabindex="0"
-             [attr.aria-label]="'Sélectionner ' + u.name"
-             (click)="addUserId = u.value" (keyup.enter)="addUserId = u.value">
-          <div class="name">{{ u.name }}</div>
-          @if (u.email && u.email !== u.name) { <div class="email">{{ u.email }}</div> }
+  <p-dialog [(visible)]="showAddDialog" [modal]="true" [style]="{ width: '480px' }" header="Ajouter un membre">
+    <div class="dlg-form">
+      <div class="field">
+        <label>Utilisateur</label>
+        <div class="user-search">
+          <input pInputText class="inp" placeholder="Rechercher nom ou email" [(ngModel)]="addFilter" />
         </div>
-      } @empty {
-        <div class="user-empty">Aucun utilisateur disponible</div>
-      }
-    </div>
-    <div class="field">
-      <label>Rôle sur le chantier</label>
-      <div class="role-btns">
-        @for (b of addRoleBtns; track b.value) {
-          <p-button [icon]="b.icon" [label]="b.value === 'ADMIN' ? 'Admin' : b.value === 'MANAGER' ? 'Chef de projet' : b.value === 'ENGINEER' ? 'Ingénieur' : 'Observateur'"
-                    [style]="{'background-color': isAddRoleSelected(b.value) ? b.color : 'transparent', 'border-color': isAddRoleSelected(b.value) ? b.color : '#cbd5e1', 'color': isAddRoleSelected(b.value) ? '#fff' : '#475569'}"
-                    [class.selected]="isAddRoleSelected(b.value)"
-                    (onClick)="setAddRole(b.value)" [disabled]="!addUserId" />
+        <div class="user-list">
+          @for (u of filteredUsers(); track u.value) {
+            <div class="user-row" [class.selected]="addUserId === u.value"
+                 role="button" tabindex="0"
+                 [attr.aria-label]="'Sélectionner ' + u.name"
+                 (click)="addUserId = u.value" (keyup.enter)="addUserId = u.value">
+              <div class="name">{{ u.name }}</div>
+              @if (u.email && u.email !== u.name) { <div class="email">{{ u.email }}</div> }
+            </div>
+          } @empty {
+            <div class="user-empty">Aucun utilisateur disponible</div>
+          }
+        </div>
+      </div>
+      <div class="field">
+        <label>Rôle sur le chantier</label>
+        <div class="role-btns">
+          @for (b of addRoleBtns; track b.value) {
+            <p-button [icon]="b.icon" [label]="b.value === 'ADMIN' ? 'Admin' : b.value === 'MANAGER' ? 'Chef de projet' : b.value === 'ENGINEER' ? 'Ingénieur' : 'Observateur'"
+                      [style]="{ 'background-color': isAddRoleSelected(b.value) ? b.color : 'transparent', 'border-color': isAddRoleSelected(b.value) ? b.color : '#cbd5e1', 'color': isAddRoleSelected(b.value) ? '#fff' : '#475569'}"
+                      [class.selected]="isAddRoleSelected(b.value)"
+                      (onClick)="setAddRole(b.value)" [disabled]="!addUserId" />
+          }
+        </div>
+        @if (!addUserId) {
+          <small class="hint">Sélectionnez un utilisateur ci-dessus</small>
         }
       </div>
-      @if (!addUserId) {
-        <small class="hint">Sélectionnez un utilisateur ci-dessus</small>
-      }
+      <div class="switch-row">
+        <p-toggleswitch [(ngModel)]="addCanUpload" inputId="add-upload" />
+        <label for="add-upload"><i class="pi pi-upload"></i> Téléverser</label>
+      </div>
     </div>
-    <div class="switch-row">
-      <p-toggleswitch [(ngModel)]="addCanUpload" inputId="add-upload" />
-      <label for="add-upload"><i class="pi pi-upload"></i> Téléverser</label>
-    </div>
-  </div>
-  <ng-template pTemplate="footer">
-    <p-button label="Annuler" [text]="true" (onClick)="showAddDialog = false" />
-    <p-button label="Ajouter" icon="pi pi-check" (onClick)="saveAdd()"
-              [disabled]="!addUserId" severity="primary" />
-  </ng-template>
-</p-dialog>
+    <ng-template pTemplate="footer">
+      <p-button label="Annuler" [text]="true" (onClick)="showAddDialog = false" />
+      <p-button label="Ajouter" icon="pi pi-check" (onClick)="saveAdd()"
+                [disabled]="!addUserId" severity="primary" />
+    </ng-template>
+  </p-dialog>
 
-<p-dialog [(visible)]="showEditDialog" [modal]="true" [style]="{ width: '480px' }"
-          [styleClass]="'full-dialog'" header="Modifier le membre">
-  <div class="dlg-form">
-    <div class="dlg-who">{{ editTarget?.fullName }}</div>
-    <div class="field">
-      <label>Rôle sur le chantier</label>
-      <p-select [options]="roleOpts" [(ngModel)]="editRole" optionLabel="label"
-                optionValue="value" styleClass="w100" />
+  <p-dialog [(visible)]="showEditDialog" [modal]="true" [style]="{ width: '480px' }" header="Modifier le membre">
+    <div class="dlg-form">
+      <div class="dlg-who">{{ editTarget?.fullName }}</div>
+      <div class="field">
+        <label>Rôle sur le chantier</label>
+        <p-select [options]="roleOpts" [(ngModel)]="editRole" optionLabel="label"
+                  optionValue="value" styleClass="w100" />
+      </div>
+      <div class="switch-row">
+        <p-toggleswitch [(ngModel)]="editCanUpload" inputId="edit-upload" />
+        <label for="edit-upload"><i class="pi pi-upload"></i> Peut téléverser des documents</label>
+      </div>
     </div>
-    <div class="switch-row">
-      <p-toggleswitch [(ngModel)]="editCanUpload" inputId="edit-upload" />
-      <label for="edit-upload">Peut téléverser des documents</label>
-    </div>
-  </div>
-  <ng-template pTemplate="footer">
-    <p-button label="Annuler" [text]="true" (onClick)="showEditDialog = false" />
-    <p-button label="Enregistrer" icon="pi pi-check" (onClick)="saveEdit()" />
-  </ng-template>
-</p-dialog>
+    <ng-template pTemplate="footer">
+      <p-button label="Annuler" [text]="true" (onClick)="showEditDialog = false" />
+      <p-button label="Enregistrer" icon="pi pi-check" (onClick)="saveEdit()" />
+    </ng-template>
+  </p-dialog>
 
-<p-dialog [(visible)]="showRemoveDialog" [modal]="true" [style]="{ width: '440px' }"
-          header="Retirer le membre">
-  <p>Retirer <strong>{{ removeTarget?.fullName }}</strong> de ce chantier ?</p>
-  <ng-template pTemplate="footer">
-    <p-button label="Annuler" [text]="true" (onClick)="showRemoveDialog = false" />
-    <p-button label="Retirer" icon="pi pi-trash" severity="danger" (onClick)="doRemove()" />
-  </ng-template>
-</p-dialog>
+  <p-dialog [(visible)]="showRemoveDialog" [modal]="true" [style]="{ width: '440px' }" header="Retirer le membre">
+    <p>Retirer <strong>{{ removeTarget?.fullName }}</strong> de ce chantier ?</p>
+    <ng-template pTemplate="footer">
+      <p-button label="Annuler" [text]="true" (onClick)="showRemoveDialog = false" />
+      <p-button label="Retirer" icon="pi pi-trash" severity="danger" (onClick)="doRemove()" />
+    </ng-template>
+  </p-dialog>
 
-@if (accessFolder; as f) {
-  <app-folder-access-dialog
-    [(visible)]="showAccessDialog"
-    [projectId]="projectId ?? ''"
-    [folder]="f"
-    (saved)="onAccessSaved()">
-  </app-folder-access-dialog>
+  @if (accessFolder; as f) {
+    <app-folder-access-dialog
+      [(visible)]="showAccessDialog"
+      [projectId]="projectId ?? ''"
+      [folder]="f"
+      (saved)="onAccessSaved()">
+    </app-folder-access-dialog>
+  }
 }

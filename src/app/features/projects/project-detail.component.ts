@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -20,7 +20,7 @@ import { AuthService } from '@app/core/auth.service';
 import { PERM } from '@app/core/permissions';
 import { ProjectService } from '@app/core/services/project.service';
 import { ProcessService } from '@app/core/services/process.service';
-import { MyTask } from '@app/core/models/process.model';
+import { MyTask, STATUS_INFO } from '@app/core/models/process.model';
 import { FolderAccessService } from '@app/core/services/folder-access.service';
 import { UserService } from '@app/core/services/user.service';
 import {
@@ -109,7 +109,7 @@ export class ProjectDetailComponent implements OnInit {
 
   canManage = computed(() => this.auth.can(PERM.PROJECT_ASSIGN) || this.auth.can(PERM.PROJECT_WRITE));
 
-  // Configurer l'accès aux dossiers : visible pour ADMIN / OWNER (PROJECT_ASSIGN/PROJECT_MANAGE)
+  // Configurer l'accÃ¨s aux dossiers : visible pour ADMIN / OWNER (PROJECT_ASSIGN/PROJECT_MANAGE)
   canConfigureProject = computed(() => this.auth.can(PERM.PROJECT_ASSIGN) || this.auth.can(PERM.PROJECT_MANAGE));
 
   // Users not yet on this project, shaped for the picker list.
@@ -128,7 +128,7 @@ export class ProjectDetailComponent implements OnInit {
     this.projectService.get(id).subscribe({
       next: p => this.project.set(p),
       error: (err) => {
-        // 403 → not a member; 404 → missing. Backend still enforces membership.
+        // 403 â†’ not a member; 404 â†’ missing. Backend still enforces membership.
         this.loading.set(false);
         this.notFound.set(true);
         if (err.status !== 403 && err.status !== 404) {
@@ -171,14 +171,14 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   roleLabel(r: string | null | undefined): string {
-    return r ? (PROJECT_ROLE_LABELS[r] ?? r) : '—';
+    return r ? (PROJECT_ROLE_LABELS[r] ?? r) : 'â€”';
   }
 
   taskStatusFrench(status: string): string {
     const m: Record<string, string> = {
       PENDING: 'En attente',
-      DONE: 'Terminé',
-      REJECTED: 'Refusé',
+      DONE: 'TerminÃ©',
+      REJECTED: 'RefusÃ©',
     };
     return m[status] ?? status;
   }
@@ -190,7 +190,7 @@ export class ProjectDetailComponent implements OnInit {
   }
 
   fmtDate(iso: string | null | undefined): string {
-    if (!iso) { return '—'; }
+    if (!iso) { return 'â€”'; }
     const d = new Date(iso);
     if (isNaN(d.getTime())) { return iso; }
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -240,7 +240,7 @@ export class ProjectDetailComponent implements OnInit {
       canUpload: this.addCanUpload
     }).subscribe({
       next: () => {
-        this.msgs.add({ severity: 'success', summary: 'Membre ajouté' });
+        this.msgs.add({ severity: 'success', summary: 'Membre ajoutÃ©' });
         this.showAddDialog = false;
         this.reloadMembers();
       },
@@ -264,7 +264,7 @@ export class ProjectDetailComponent implements OnInit {
       canUpload: this.editCanUpload
     }).subscribe({
       next: () => {
-        this.msgs.add({ severity: 'success', summary: 'Membre modifié' });
+        this.msgs.add({ severity: 'success', summary: 'Membre modifiÃ©' });
         this.showEditDialog = false;
         this.reloadMembers();
       },
@@ -283,7 +283,7 @@ export class ProjectDetailComponent implements OnInit {
     if (!id || !this.removeTarget) { return; }
     this.projectService.removeMember(id, this.removeTarget.userId).subscribe({
       next: () => {
-        this.msgs.add({ severity: 'success', summary: 'Membre retiré' });
+        this.msgs.add({ severity: 'success', summary: 'Membre retirÃ©' });
         this.showRemoveDialog = false;
         this.reloadMembers();
       },
@@ -349,5 +349,16 @@ export class ProjectDetailComponent implements OnInit {
     this.router.navigate(['/processes/start'], {
       queryParams: { projectId: this.projectId },
     });
+  }
+
+  /** Start a payment approval process for this project (1-click from chantier). */
+  startPaymentApproval(): void {
+    this.router.navigate(['/processes/start'], {
+      queryParams: { projectId: this.projectId, template: 'PAYMENT_APPROVAL' },
+    });
+  }
+
+  addFolder(): void {
+    this.msgs.add({ severity: 'info', summary: 'Dossier', detail: 'Creation de dossier a implementer' });
   }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal, computed } from '@angular/core';
+﻿import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { NgClass } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
@@ -8,7 +8,7 @@ import { InputTextarea } from 'primeng/inputtextarea';
 import { TagModule } from 'primeng/tag';
 import { BadgeModule } from 'primeng/badge';
 import { ProcessService } from '@app/core/services/process.service';
-import { MyTask, StepStatus } from '@app/core/models/process.model';
+import { MyTask, StepStatus, ROLE_ICONS, STATUS_INFO, dotColorClass } from '@app/core/models/process.model';
 
 @Component({
   selector: 'app-my-tasks',
@@ -16,32 +16,39 @@ import { MyTask, StepStatus } from '@app/core/models/process.model';
   styleUrl: './my-tasks.component.scss',
   imports: [ButtonModule, NgClass, FormsModule, DialogModule, InputTextarea, TagModule, BadgeModule],
   template: `
-    <section class="my-tasks">
+    <section class="my-tasks proc-bg">
       <header class="section-header">
-        <h2>Mes tâches</h2>
+        <h2><i class="pi pi-check-square"></i> Mes t\u00e2ches</h2>
         <p-badge [value]="pendingCount()" size="large" severity="warn" *ngIf="pendingCount() > 0" />
       </header>
 
       @if (loading()) {
-        <p class="skeleton">Chargement…</p>
+        <p class="skeleton">Chargement\u2026</p>
+      } @else if (allTasks().length === 0) {
+        <div class="empty-state">
+          <i class="pi pi-inbox"></i>
+          <p>Aucune tarea en attente</p>
+        </div>
       } @else {
         <div class="status-chips">
           <p-tag [value]="'Toutes'" [severity]="'secondary'" [style]="{ 'cursor': 'pointer' }" (onClick)="filterStatus(null)" />
           <p-tag [value]="'En attente'" [severity]="activeFilter() === 'PENDING' ? 'warn' : 'secondary'" [style]="{ 'cursor': 'pointer' }" (onClick)="filterStatus('PENDING')" />
-          <p-tag [value]="'Terminées'" [severity]="activeFilter() === 'DONE' ? 'success' : 'secondary'" [style]="{ 'cursor': 'pointer' }" (onClick)="filterStatus('DONE')" />
-          <p-tag [value]="'Rejetées'" [severity]="activeFilter() === 'REJECTED' ? 'danger' : 'secondary'" [style]="{ 'cursor': 'pointer' }" (onClick)="filterStatus('REJECTED')" />
+          <p-tag [value]="'Termin\u00e9es'" [severity]="activeFilter() === 'DONE' ? 'success' : 'secondary'" [style]="{ 'cursor': 'pointer' }" (onClick)="filterStatus('DONE')" />
+          <p-tag [value]="'Rejet\u00e9es'" [severity]="activeFilter() === 'REJECTED' ? 'danger' : 'secondary'" [style]="{ 'cursor': 'pointer' }" (onClick)="filterStatus('REJECTED')" />
         </div>
 
         <div class="tasks-grid">
           @for (task of visibleTasks(); track task.stepInstanceId) {
             <div class="task-card">
               <div class="card-header">
-                <span class="card-project">{{ task.processName }}</span>
-                <span class="card-step">{{ task.stepName }}</span>
+                <span class="card-project">{{ task.projectName || task.templateName || 'Processus' }}</span>
+                @if (task.assigneeRole) {
+                  <span class="card-role"><i class="pi {{ roleIcon(task.assigneeRole) }}"></i> {{ task.assigneeRole }}</span>
+                }
               </div>
               <div class="card-body">
-                <p class="card-subject">{{ task.subjectType }} • {{ task.subjectId }}</p>
-                <p class="card-assignee">Assigné à {{ task.assigneeName }}</p>
+                <p class="card-step">{{ task.stepName }}</p>
+                <p class="card-assignee">{{ task.assigneeName || 'Non assign\u00e9' }}</p>
               </div>
               <div class="card-actions">
                 @if (canAct(task)) {
@@ -64,35 +71,23 @@ import { MyTask, StepStatus } from '@app/core/models/process.model';
                         class="btn-reject"
                   ></button>
                 } @else {
-                  <span class="status-badge"
-                        [ngClass]="{
-                          'badge-done': task.status === 'DONE',
-                          'badge-current': task.status === 'PENDING',
-                          'badge-rejected': task.status === 'REJECTED'
-                        }">
-                    {{ taskStatusFrench(task.status) }}
+                  <span class="status-badge {{ statusBadgeClass(task.status) }}">
+                    <i class="pi {{ statusIcon(task.status) }}"></i> {{ statusLabel(task.status) }}
                   </span>
                 }
               </div>
             </div>
           }
-          @empty {
-            <div class="empty-state">
-              <i class="pi pi-folder"></i>
-              <p>Rien à faire</p>
-            </div>
-          }
         </div>
       }
 
-      <!-- Reject dialog -->
-      <p-dialog [(visible)]="rejectDialogVisible" [modal]="true" [style]="{ width: '440px' }"
-                header="Rejeter l'étape">
-        <div class="reject-dialog-body">
+      <p-dialog [(visible)]="rejectDialogVisible" [modal]="true" [style]="{ width: '440px' }" header="Rejeter l'\u00e9tape">
+        <div class="dlg-form">
+          <p class="dlg-task">{{ rejectTask?.stepName }}</p>
           <label for="reject-comment">Commentaire (obligatoire)</label>
           <textarea pInputTextarea id="reject-comment" [(ngModel)]="rejectComment"
-                    [autoResize]="true" rows="3" placeholder="Motif du rejet…"></textarea>
-          <small class="hint">Un commentaire est requis pour rejeter l'étape.</small>
+                    [autoResize]="true" rows="3" placeholder="Motif du rejet\u2026"></textarea>
+          <small class="hint">Un commentaire est requis pour rejeter l'\u00e9tape.</small>
         </div>
         <ng-template pTemplate="footer">
           <p-button label="Annuler" [text]="true" (onClick)="closeRejectDialog()" />
@@ -123,20 +118,37 @@ export class MyTasksComponent implements OnInit {
 
   pendingCount = computed(() => this.allTasks().filter(t => t.status === 'PENDING').length);
 
+  roleIcon = (role: string): string => ROLE_ICONS[role] ?? ROLE_ICONS['default'];
+
+  statusBadgeClass = (status: string): string => {
+    const s = String(status ?? '').toUpperCase();
+    switch (s) {
+      case 'DONE':   return 'badge-done';
+      case 'PENDING': return 'badge-current';
+      case 'REJECTED': return 'badge-rejected';
+      default: return 'badge-muted';
+    }
+  };
+
+  statusIcon = (status: string): string => {
+    const info = STATUS_INFO[String(status ?? '').toUpperCase()];
+    return info ? info.icon : 'pi-clock';
+  };
+
+  statusLabel = (status: string): string => {
+    const info = STATUS_INFO[String(status ?? '').toUpperCase()];
+    return info ? info.label : status;
+  };
+
   taskStatusFrench = (status: StepStatus): string => {
-    const m: Record<StepStatus, string> = {
-      DONE: 'Terminé',
-      PENDING: 'En attente de vous',
-      REJECTED: 'Refusé',
-    };
-    return m[status] ?? status;
+    const info = STATUS_INFO[status];
+    return info ? info.label : status;
   };
 
   ngOnInit(): void {
     this.reload();
   }
 
-  /** Re-fetch the task list from the backend. */
   reload(): void {
     this.loading.set(true);
     this.processService.myTasks().subscribe({
@@ -145,7 +157,7 @@ export class MyTasksComponent implements OnInit {
         this.loading.set(false);
       },
       error: () => {
-        this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger mes tâches' });
+        this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Impossible de charger mes t\u00e2ches' });
         this.allTasks.set([]);
         this.loading.set(false);
       },
@@ -157,12 +169,12 @@ export class MyTasksComponent implements OnInit {
   }
 
   validate(task: MyTask): void {
-    this.processService.complete(task.processId, task.stepInstanceId, {}).subscribe({
+    this.processService.complete(task.instanceId, task.stepInstanceId, {}).subscribe({
       next: () => {
-        this.msgs.add({ severity: 'success', summary: 'Validé' });
+        this.msgs.add({ severity: 'success', summary: 'Valid\u00e9' });
         this.reload();
       },
-      error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Échec de la validation' }),
+      error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: '\u00c9chec de la validation' }),
     });
   }
 
@@ -180,13 +192,13 @@ export class MyTasksComponent implements OnInit {
 
   confirmReject(): void {
     if (!this.rejectTask || !this.rejectComment.trim()) { return; }
-    this.processService.reject(this.rejectTask.processId, this.rejectTask.stepInstanceId, this.rejectComment).subscribe({
+    this.processService.reject(this.rejectTask.instanceId, this.rejectTask.stepInstanceId, this.rejectComment).subscribe({
       next: () => {
-        this.msgs.add({ severity: 'success', summary: 'Rejeté' });
+        this.msgs.add({ severity: 'success', summary: 'Rejet\u00e9' });
         this.closeRejectDialog();
         this.reload();
       },
-      error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: 'Échec du rejet' }),
+      error: () => this.msgs.add({ severity: 'error', summary: 'Erreur', detail: '\u00c9chec du rejet' }),
     });
   }
 
@@ -194,3 +206,4 @@ export class MyTasksComponent implements OnInit {
     this.activeFilter.set(status);
   }
 }
+

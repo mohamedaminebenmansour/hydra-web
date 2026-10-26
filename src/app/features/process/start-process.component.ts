@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+﻿import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { ButtonModule } from 'primeng/button';
@@ -6,7 +6,7 @@ import { ChipModule } from 'primeng/chip';
 import { SelectModule } from 'primeng/select';
 import { MessageService } from 'primeng/api';
 import { ProcessService } from '@app/core/services/process.service';
-import { ProcessHeader, ProcessTemplate } from '@app/core/models/process.model';
+import { ProcessTemplate } from '@app/core/models/process.model';
 
 @Component({
   selector: 'app-start-process',
@@ -14,7 +14,7 @@ import { ProcessHeader, ProcessTemplate } from '@app/core/models/process.model';
   styleUrl: './start-process.component.scss',
   imports: [ButtonModule, ChipModule, SelectModule, ReactiveFormsModule],
   template: `
-    <section class="start-process">
+    <section class="start-process proc-bg">
       <h2>Lancer un processus</h2>
 
       <form [formGroup]="form" (ngSubmit)="onSubmit()">
@@ -24,8 +24,13 @@ import { ProcessHeader, ProcessTemplate } from '@app/core/models/process.model';
         </div>
 
         <div class="form-group">
-          <label>Modèle de processus</label>
-          <p-select [options]="templateOptions" formControlName="templateKey" placeholder="Sélectionner" />
+          <label>Mod\u00e8le de processus</label>
+          <p-select [options]="templateOptions" formControlName="templateKey" placeholder="S\u00e9lectionner" />
+        </div>
+
+        <div class="form-group">
+          <label>Type de sujet</label>
+          <p-select [options]="subjectTypeOptions" formControlName="subjectType" placeholder="S\u00e9lectionner" />
         </div>
 
         <div class="form-actions">
@@ -59,9 +64,7 @@ export class StartProcessComponent implements OnInit {
     const projectId = this.route.snapshot.queryParamMap.get('projectId') || '';
     const template = this.route.snapshot.queryParamMap.get('template') || '';
 
-    // Hidden subjectId: random UUID
-    this.form.controls.subjectId.setValue(crypto.randomUUID());
-
+    // subjectId comes from the project/business context — not a random UUID
     if (projectId) {
       this.form.controls.projectId.setValue(projectId);
     }
@@ -74,13 +77,19 @@ export class StartProcessComponent implements OnInit {
 
   projectIdChip = (): string => {
     const id = this.form.controls.projectId.value;
-    return id ? `Projet #${id}` : 'Aucun projet sélectionné';
+    return id ? `Projet #${id}` : 'Aucun projet s\u00e9lectionn\u00e9';
   };
 
   readonly templateOptions = [
     { label: 'Approbation de paiement', value: 'PAYMENT_APPROVAL', icon: 'pi-wallet' },
-    { label: 'Achat de matériel', value: 'MATERIAL_PURCHASE', icon: 'pi-shopping-cart' },
+    { label: 'Achat de mat\u00e9riel', value: 'MATERIAL_PURCHASE', icon: 'pi-shopping-cart' },
     { label: 'Sous-traitance', value: 'SUBCONTRACT_APPROVAL', icon: 'pi-users' },
+  ];
+
+  readonly subjectTypeOptions = [
+    { label: 'Paiement', value: 'PAYMENT' },
+    { label: 'Achat', value: 'PURCHASE' },
+    { label: 'Contrat', value: 'CONTRACT' },
   ];
 
   private loadTemplates(): void {
@@ -103,14 +112,14 @@ export class StartProcessComponent implements OnInit {
       subjectType: this.form.controls.subjectType.value,
       templateKey: this.form.controls.templateKey.value,
     }).subscribe({
-      next: (header: ProcessHeader) => {
+      next: (result: { instanceId: string; status: string }) => {
         this.submitting.set(false);
         this.msgs.add({
           severity: 'success',
-          summary: 'Processus démarré',
-          detail: `Processus ${header.statusLabel.toLowerCase()} — ${header.templateName}`,
+          summary: 'Processus d\u00e9marr\u00e9',
+          detail: `Processus ${result.status.toLowerCase()}`,
         });
-        const id = header.id;
+        const id = result.instanceId;
         if (id) {
           this.router.navigate(['/processes', id]);
         }
